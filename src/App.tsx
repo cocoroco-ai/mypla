@@ -10,6 +10,7 @@ import { isConfigured, supabase } from './supabase';
 import {
   countItems,
   countTrashExpiringSoon,
+  myQuota,
   pickReread,
   purgeExpiredTrash,
   TRASH_WARN_DAYS,
@@ -60,8 +61,13 @@ export default function App() {
       });
   }, [userId]);
 
+  const isGuest = session?.user.is_anonymous === true;
+
   async function logout() {
-    if (!window.confirm('ログアウトしますか？')) return;
+    const message = isGuest
+      ? 'お試し利用を終了しますか？\n終了すると、保存した内容にはもう戻れません（必要なら先に「データの書き出し」をしてください）。'
+      : 'ログアウトしますか？';
+    if (!window.confirm(message)) return;
     await supabase.auth.signOut();
     setScreen({ name: 'home' });
   }
@@ -76,6 +82,7 @@ export default function App() {
         return (
           <Home
             purged={purged}
+            isGuest={isGuest}
             onImport={importShot}
             onLibrary={library}
             onOpen={(id) => setScreen({ name: 'item', id })}
@@ -111,7 +118,7 @@ export default function App() {
         </button>
         {session && (
           <button className="btn-logout" onClick={logout}>
-            ログアウト
+            {isGuest ? 'お試しを終了' : 'ログアウト'}
           </button>
         )}
       </header>
@@ -133,6 +140,7 @@ export default function App() {
 
 type HomeProps = {
   purged: number | null;
+  isGuest: boolean;
   onImport: () => void;
   onLibrary: () => void;
   onOpen: (id: string) => void;
@@ -140,7 +148,7 @@ type HomeProps = {
   onBackup: () => void;
 };
 
-function Home({ purged, onImport, onLibrary, onOpen, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, onImport, onLibrary, onOpen, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -162,6 +170,12 @@ function Home({ purged, onImport, onLibrary, onOpen, onTrash, onBackup }: HomePr
       setNoticesReady(true);
     });
   }, [purged]);
+  // 保存数の上限（上限のある人だけ表示）
+  const [quota, setQuota] = useState<{ limit: number; used: number } | null>(null);
+  useEffect(() => {
+    myQuota().then(setQuota).catch(() => setQuota(null));
+  }, []);
+
   const hasNotice = reread !== null || expiring > 0 || (purged ?? 0) > 0;
 
   const soon = [
@@ -172,6 +186,22 @@ function Home({ purged, onImport, onLibrary, onOpen, onTrash, onBackup }: HomePr
   return (
     <section>
       <p className="tagline">集める知識、広がる私。</p>
+
+      {(isGuest || quota) && (
+        <div className="guest-banner">
+          {isGuest && <strong>お試し中です。</strong>}
+          {quota && (
+            <span>
+              保存できるのは{quota.limit}件まで（あと{Math.max(0, quota.limit - quota.used)}件。ゴミ箱の中も数えます）。
+            </span>
+          )}
+          {isGuest && (
+            <span className="guest-banner-note">
+              続きはこの端末のこのブラウザでだけ使えます。iPhone でホーム画面に追加して使う場合は、追加したアイコンから開き直して、もう一度「お試しで使ってみる」から始めてください。
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="notices" aria-live="polite">
         <h2 className="notices-title">お知らせ</h2>

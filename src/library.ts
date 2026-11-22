@@ -332,6 +332,20 @@ export async function deleteForever(ids: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------
+// 保存数の上限（お試しの人など。管理者は上限なし）
+// ---------------------------------------------------------------------
+
+/** 自分の保存上限と、使っている件数（ゴミ箱の中も数える）。上限なしなら null */
+export async function myQuota(): Promise<{ limit: number; used: number } | null> {
+  const { data, error } = await supabase.rpc('my_item_limit');
+  if (error) throw new Error(toJapaneseError(error.message));
+  if (data === null || data === undefined) return null;
+  const { count, error: countError } = await supabase.from('items').select('id', { count: 'exact', head: true });
+  if (countError) throw new Error(toJapaneseError(countError.message));
+  return { limit: data as number, used: count ?? 0 };
+}
+
+// ---------------------------------------------------------------------
 // ホームのお知らせ
 // ---------------------------------------------------------------------
 

@@ -366,3 +366,13 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .backup-ready { margin: 0; font-weight: 700; color: var(--deep); }
 .backup-card .notice p { margin: 0 0 4px; }
 .backup-card .notice ul { margin: 4px 0 0; padding-left: 20px; font-size: 13px; }
+
+/* お試し利用 */
+.guest-card { display: grid; gap: 10px; margin-top: 16px; }
+.guest-title { font-size: 16px; color: var(--deep); margin: 0; }
+.guest-card .hint { margin: 0; }
+.guest-banner {
+  display: grid; gap: 4px; margin: 0 0 16px; padding: 10px 12px;
+  background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 12px; font-size: 14px; line-height: 1.6;
+}
+.guest-banner-note { font-size: 12px; color: var(--text-sub); }

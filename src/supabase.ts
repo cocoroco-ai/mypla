@@ -16,6 +16,10 @@ export const supabase = createClient(url ?? 'http://localhost', key ?? 'missing'
 /** Supabase の英語のエラーを、分かりやすい日本語にする */
 export function toJapaneseError(message: string): string {
   const m = message.toLowerCase();
+  if (m.includes('mypla_limit')) return 'お試しで保存できる上限（30件）に達しました。ゴミ箱の中も数に入るので、要らないものは「完全に削除」すると、また保存できます。';
+  if (m.includes('signups not allowed') || m.includes('anonymous sign-ins are disabled')) return 'いまはお試し利用を受け付けていません。';
+  if (m.includes('exceeded the maximum allowed size') || m.includes('payload too large')) return '画像が大きすぎます（5MBまで）。';
+  if (m.includes('row-level security') && m.includes('objects')) return '保存できる画像の上限に達しました。要らないものを「完全に削除」してからお試しください。';
   if (m.includes('invalid login credentials')) return 'メールアドレスかパスワードが違います。';
   if (m.includes('email not confirmed')) return 'このメールアドレスは確認が済んでいません。Supabase の管理画面で利用者を確認済みにしてください。';
   if (m.includes('failed to fetch') || m.includes('network')) return 'インターネットにつながっていないか、Supabase が一時停止している可能性があります。';

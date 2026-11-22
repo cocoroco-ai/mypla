@@ -4,12 +4,13 @@ import { supabase, toJapaneseError } from './supabase';
 /**
  * メールアドレス＋パスワードでログインする画面。
  * 新規登録はアプリからはできない（利用者は Supabase の管理画面で作る）。
+ * 受講生などは「お試しで使ってみる」で、登録なしで入れる（Supabase の匿名ログイン）。
  */
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | 'login' | 'guest'>(false);
   const [error, setError] = useState('');
 
   async function submit(e: FormEvent) {
@@ -19,10 +20,18 @@ export default function LoginScreen() {
       setError('メールアドレスとパスワードを入力してください。');
       return;
     }
-    setBusy(true);
+    setBusy('login');
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     // 成功したときは App 側がログイン状態の変化を受け取って、ホームに切り替える
+    if (error) setError(toJapaneseError(error.message));
+  }
+
+  async function tryAsGuest() {
+    setError('');
+    setBusy('guest');
+    const { error } = await supabase.auth.signInAnonymously();
+    setBusy(false);
     if (error) setError(toJapaneseError(error.message));
   }
 
@@ -49,7 +58,7 @@ export default function LoginScreen() {
             spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={busy}
+            disabled={busy !== false}
           />
         </label>
 
@@ -62,7 +71,7 @@ export default function LoginScreen() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
+              disabled={busy !== false}
             />
             <button type="button" className="btn-show" onClick={() => setShowPassword((v) => !v)}>
               {showPassword ? '隠す' : '表示'}
@@ -70,15 +79,26 @@ export default function LoginScreen() {
           </div>
         </label>
 
-        <button type="submit" className="btn-primary btn-large" disabled={busy}>
-          {busy ? 'ログインしています…' : 'ログイン'}
+        <button type="submit" className="btn-primary btn-large" disabled={busy !== false}>
+          {busy === 'login' ? 'ログインしています…' : 'ログイン'}
         </button>
       </form>
 
+      <div className="card guest-card">
+        <h2 className="guest-title">はじめての方へ</h2>
+        <p className="hint">
+          登録なしで、すぐに試せます。保存できるのは30件まで。データはあなただけのもので、ほかの人からは見えません。
+        </p>
+        <p className="hint">
+          ※ 続きは<strong>この端末のこのブラウザでだけ</strong>使えます。ログアウトや閲覧履歴の消去をすると、保存した内容には戻れません。
+        </p>
+        <button type="button" className="btn-secondary btn-large" onClick={tryAsGuest} disabled={busy !== false}>
+          {busy === 'guest' ? '準備しています…' : 'お試しで使ってみる'}
+        </button>
+      </div>
+
       <p className="hint center">
-        mypla. は招待した人だけが使えます。
-        <br />
-        パスワードを忘れたときは、Supabase の管理画面で設定し直せます。
+        アカウントをお持ちの方は、上からログインしてください。
       </p>
     </section>
   );
