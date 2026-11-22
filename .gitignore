@@ -1,0 +1,10 @@
+node_modules
+dist
+.env*
+
+# 型チェックの一時ファイル
+*.tsbuildinfo
+# 学習用ページ（個人的なメモを含むため、GitHub には置かない）
+docs/
+# 作業メモ（個人的な決定事項を含むため、公開の GitHub には置かない）
+PROGRESS.md
