@@ -200,6 +200,12 @@ button:disabled { opacity: 0.5; cursor: default; }
   border-radius: 0 4px 0 6px; background: var(--blue); color: #fff; opacity: 0.9;
   font-size: 12px; font-weight: 700; line-height: 22px; text-align: center;
 }
+.region-remove {
+  position: absolute; top: -1px; left: -1px; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 4px 0 8px 0; background: var(--error); color: #fff;
+  font-size: 20px; font-weight: 700; line-height: 32px; text-align: center; cursor: pointer;
+  touch-action: manipulation;
+}
 .region-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 .region-actions .meta { margin-right: auto; }
 .btn-small {

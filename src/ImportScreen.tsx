@@ -211,7 +211,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
 
           {selecting && (
             <p className="hint">
-              読み取りたい文章を、指でなぞって四角で囲んでください。何か所でも囲めます（上から順につなげます）。
+              読み取りたい文章を、指でなぞって四角で囲んでください。何か所でも囲めます（上から順につなげます）。間違えて囲んだ四角は、左上の「×」で消せます。
             </p>
           )}
 
@@ -220,6 +220,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
             regions={selecting ? regions : []}
             selecting={selecting && !busy}
             onAdd={(r) => setRegions((list) => [...list, r])}
+            onRemove={(r) => setRegions((list) => list.filter((x) => x !== r))}
           />
 
           {selecting && regions.length > 0 && (

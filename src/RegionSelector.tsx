@@ -6,6 +6,7 @@ type Props = {
   regions: Region[];
   selecting: boolean;
   onAdd: (r: Region) => void;
+  onRemove: (r: Region) => void;
 };
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -14,7 +15,7 @@ const clamp = (v: number) => Math.min(1, Math.max(0, v));
  * プレビュー画像の上を指（またはマウス）でなぞって、読み取る範囲を四角で囲む。
  * 範囲は画像に対する割合（0〜1）で記録するので、画面の大きさが変わってもずれない。
  */
-export default function RegionSelector({ src, regions, selecting, onAdd }: Props) {
+export default function RegionSelector({ src, regions, selecting, onAdd, onRemove }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   // 素早くなぞっても取りこぼさないよう、なぞり中の値は ref で即時に持つ（state は表示用）
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -57,9 +58,9 @@ export default function RegionSelector({ src, regions, selecting, onAdd }: Props
   }
 
   function up() {
-    // 小さすぎる四角（指が少し触れただけ）は無視する
+    // 小さすぎる四角（指が少し触れただけ・画面をなでただけ）は無視する
     const d = draftRef.current;
-    if (d && d.w > 0.04 && d.h > 0.015) onAdd(d);
+    if (d && d.w > 0.08 && d.h > 0.025) onAdd(d);
     startRef.current = null;
     setDraft(null);
   }
@@ -86,6 +87,18 @@ export default function RegionSelector({ src, regions, selecting, onAdd }: Props
       {sorted.map((r, i) => (
         <div key={`${r.x}-${r.y}`} className="region-rect" style={toStyle(r)}>
           <span className="region-no">{i + 1}</span>
+          {selecting && (
+            <button
+              type="button"
+              className="region-remove"
+              aria-label={`${i + 1}番の範囲を消す`}
+              // 押したときに、新しい四角を描き始めないようにする
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onRemove(r)}
+            >
+              ×
+            </button>
+          )}
         </div>
       ))}
       {draft && <div className="region-rect is-draft" style={toStyle(draft)} />}
