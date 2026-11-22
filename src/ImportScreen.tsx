@@ -130,6 +130,19 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     }
   }
 
+  // 手元に良いスクショが無い人のための見本（public/samples/ にある）
+  async function pickSample(src: string, name: string) {
+    setError(null);
+    try {
+      const res = await fetch(src);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      pick(new File([blob], name, { type: 'image/jpeg' }));
+    } catch {
+      setError('見本の画像を読み込めませんでした。通信状態を確認してください。');
+    }
+  }
+
   const busy = progress !== null || saving;
 
   if (saved) {
@@ -139,7 +152,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         <div className="card saved-card">
           <p className="saved-icon" aria-hidden="true">✓</p>
           <p className="saved-title">{title.trim() || 'タイトルなし'}</p>
-          <p className="hint center">文章と元の画像を保存しました。一覧（ライブラリー）は次の段階で見られるようになります。</p>
+          <p className="hint center">文章と元の画像を保存しました。ホームの「ライブラリー」から見られます。</p>
         </div>
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
@@ -168,7 +181,24 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
           <span>タップして画像を選ぶ</span>
           <span className="sub">写真アプリのスクリーンショットから選べます</span>
         </button>
-      ) : (
+      ) : null}
+
+      {!previewUrl && (
+        <div className="try-samples">
+          <p className="try-title">手元にちょうどいいスクショが無いときは、見本で試せます</p>
+          <div className="try-list">
+            {TRY_SAMPLES.map((t) => (
+              <button key={t.src} className="try-item" onClick={() => pickSample(t.src, t.file)}>
+                <img src={t.src} alt="" />
+                <span className="try-name">{t.name}</span>
+                <span className="try-note">{t.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!previewUrl ? null : (
         <div className="card">
           <div className="segmented" role="group" aria-label="読み取り方">
             <button className={!selecting ? 'is-on' : ''} onClick={() => setSelecting(false)} disabled={busy}>
@@ -302,6 +332,11 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
 }
 
 /** タイトル候補：最初の意味のある行を、最大30文字で */
+const TRY_SAMPLES = [
+  { src: '/samples/try-1.jpg', file: 'mihon-post.jpg', name: '見本A：SNSの投稿', note: '「範囲を指で囲む」で本文だけ読むのがおすすめ' },
+  { src: '/samples/try-2.jpg', file: 'mihon-list.jpg', name: '見本B：持ち物リスト', note: '「画像全体を読む」でそのまま読めます' },
+];
+
 export function suggestTitle(text: string): string {
   const line = text
     .split('\n')
