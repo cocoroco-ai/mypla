@@ -5,6 +5,7 @@ import LoginScreen from './LoginScreen';
 import LibraryScreen from './LibraryScreen';
 import ItemScreen from './ItemScreen';
 import TrashScreen from './TrashScreen';
+import BackupScreen from './BackupScreen';
 import { isConfigured, supabase } from './supabase';
 import {
   countItems,
@@ -20,7 +21,8 @@ type Screen =
   | { name: 'import' }
   | { name: 'library' }
   | { name: 'item'; id: string }
-  | { name: 'trash' };
+  | { name: 'trash' }
+  | { name: 'backup' };
 
 export default function App() {
   const [screen, setScreenState] = useState<Screen>({ name: 'home' });
@@ -78,6 +80,7 @@ export default function App() {
             onLibrary={library}
             onOpen={(id) => setScreen({ name: 'item', id })}
             onTrash={() => setScreen({ name: 'trash' })}
+            onBackup={() => setScreen({ name: 'backup' })}
           />
         );
       case 'import':
@@ -93,6 +96,8 @@ export default function App() {
         );
       case 'trash':
         return <TrashScreen onBack={library} />;
+      case 'backup':
+        return <BackupScreen onBack={home} />;
       case 'item':
         return <ItemScreen id={screen.id} onBack={library} />;
     }
@@ -132,9 +137,10 @@ type HomeProps = {
   onLibrary: () => void;
   onOpen: (id: string) => void;
   onTrash: () => void;
+  onBackup: () => void;
 };
 
-function Home({ purged, onImport, onLibrary, onOpen, onTrash }: HomeProps) {
+function Home({ purged, onImport, onLibrary, onOpen, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -221,6 +227,10 @@ function Home({ purged, onImport, onLibrary, onOpen, onTrash }: HomeProps) {
           </div>
         ))}
       </div>
+
+      <button className="home-link" onClick={onBackup}>
+        データの書き出し・読み込み（バックアップ）
+      </button>
 
       <div className="bottom-action">
         <button className="btn-primary btn-large" onClick={onImport}>
