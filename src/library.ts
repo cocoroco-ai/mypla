@@ -345,6 +345,26 @@ export async function myQuota(): Promise<{ limit: number; used: number } | null>
   return { limit: data as number, used: count ?? 0 };
 }
 
+/**
+ * 30日使われていないお試しアカウントを、画像ごと片付ける（管理者がアプリを開いたときだけ働く。
+ * 管理者以外が呼んでも、対象が0件になるだけ）。片付けた人数を返す
+ */
+export async function cleanupExpiredGuests(): Promise<number> {
+  for (let round = 0; round < 10; round++) {
+    const { data, error } = await supabase.rpc('expired_guest_files');
+    if (error) throw new Error(toJapaneseError(error.message));
+    const paths = (data ?? []) as string[];
+    if (paths.length === 0) break;
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths.slice(i, i + 100));
+      if (removeError) throw new Error(toJapaneseError(removeError.message));
+    }
+  }
+  const { data, error } = await supabase.rpc('delete_expired_guests');
+  if (error) throw new Error(toJapaneseError(error.message));
+  return (data as number) ?? 0;
+}
+
 // ---------------------------------------------------------------------
 // ホームのお知らせ
 // ---------------------------------------------------------------------
