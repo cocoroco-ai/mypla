@@ -331,6 +331,61 @@ export async function deleteForever(ids: string[]): Promise<void> {
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
+// ---------------------------------------------------------------------
+// ホームのお知らせ
+// ---------------------------------------------------------------------
+
+/** 読み返しのお知らせに出すのは、保存してからこの日数以上たったもの */
+export const REREAD_MIN_DAYS = 7;
+/** ゴミ箱で「もうすぐ消える」と知らせるのは、残りこの日数以内のもの */
+export const TRASH_WARN_DAYS = 7;
+
+export type RereadPick = { id: string; title: string; daysAgo: number };
+
+/**
+ * 読み返しのお知らせ：保存して REREAD_MIN_DAYS 日以上たったものから1件選ぶ。
+ * 同じ日は同じものが出るように、日付で順番に選ぶ（開くたびに変わらない）。無ければ null
+ */
+export async function pickReread(): Promise<RereadPick | null> {
+  const before = new Date(Date.now() - REREAD_MIN_DAYS * DAY_MS).toISOString();
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
+    .lt('created_at', before);
+  if (error) throw new Error(toJapaneseError(error.message));
+  if (!count) return null;
+
+  const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / DAY_MS);
+  const offset = today % count;
+  const { data, error: pickError } = await supabase
+    .from('items')
+    .select('id, title, created_at')
+    .is('deleted_at', null)
+    .lt('created_at', before)
+    .order('created_at', { ascending: true })
+    .range(offset, offset);
+  if (pickError) throw new Error(toJapaneseError(pickError.message));
+  const row = data?.[0];
+  if (!row) return null;
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    daysAgo: Math.floor((Date.now() - new Date(row.created_at as string).getTime()) / DAY_MS),
+  };
+}
+
+/** ゴミ箱の中で、あと TRASH_WARN_DAYS 日以内に完全に削除されるものの件数 */
+export async function countTrashExpiringSoon(): Promise<number> {
+  const before = new Date(Date.now() - (TRASH_DAYS - TRASH_WARN_DAYS) * DAY_MS).toISOString();
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .lt('deleted_at', before);
+  if (error) throw new Error(toJapaneseError(error.message));
+  return count ?? 0;
+}
+
 /** ゴミ箱に入れて30日を過ぎたものを完全に削除する（アプリを開いたときに呼ぶ）。消した件数を返す */
 export async function purgeExpiredTrash(): Promise<number> {
   const limit = new Date(Date.now() - TRASH_DAYS * DAY_MS).toISOString();

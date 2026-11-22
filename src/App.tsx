@@ -6,7 +6,14 @@ import LibraryScreen from './LibraryScreen';
 import ItemScreen from './ItemScreen';
 import TrashScreen from './TrashScreen';
 import { isConfigured, supabase } from './supabase';
-import { countItems, purgeExpiredTrash } from './library';
+import {
+  countItems,
+  countTrashExpiringSoon,
+  pickReread,
+  purgeExpiredTrash,
+  TRASH_WARN_DAYS,
+  type RereadPick,
+} from './library';
 
 type Screen =
   | { name: 'home' }
@@ -37,10 +44,18 @@ export default function App() {
   }, []);
 
   // ログインしたら、ゴミ箱に入れて30日を過ぎたものを完全に削除する（自動実行の仕組みを使わない無料プラン向け）
+  // 消した件数はホームのお知らせに出す（null = まだ終わっていない）
   const userId = session?.user.id;
+  const [purged, setPurged] = useState<number | null>(null);
   useEffect(() => {
     if (!userId) return;
-    purgeExpiredTrash().catch((e) => console.warn('期限切れのゴミ箱の削除に失敗しました', e));
+    setPurged(null);
+    purgeExpiredTrash()
+      .then(setPurged)
+      .catch((e) => {
+        console.warn('期限切れのゴミ箱の削除に失敗しました', e);
+        setPurged(0);
+      });
   }, [userId]);
 
   async function logout() {
@@ -56,7 +71,15 @@ export default function App() {
   function renderScreen() {
     switch (screen.name) {
       case 'home':
-        return <Home onImport={importShot} onLibrary={library} />;
+        return (
+          <Home
+            purged={purged}
+            onImport={importShot}
+            onLibrary={library}
+            onOpen={(id) => setScreen({ name: 'item', id })}
+            onTrash={() => setScreen({ name: 'trash' })}
+          />
+        );
       case 'import':
         return <ImportScreen onBack={home} />;
       case 'library':
@@ -103,12 +126,37 @@ export default function App() {
   );
 }
 
-function Home({ onImport, onLibrary }: { onImport: () => void; onLibrary: () => void }) {
+type HomeProps = {
+  purged: number | null;
+  onImport: () => void;
+  onLibrary: () => void;
+  onOpen: (id: string) => void;
+  onTrash: () => void;
+};
+
+function Home({ purged, onImport, onLibrary, onOpen, onTrash }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
     countItems().then(setCount).catch(() => setCount(null));
   }, []);
+
+  // お知らせ（ゴミ箱の自動削除が終わってから調べる）
+  const [reread, setReread] = useState<RereadPick | null>(null);
+  const [expiring, setExpiring] = useState(0);
+  const [noticesReady, setNoticesReady] = useState(false);
+  useEffect(() => {
+    if (purged === null) return;
+    Promise.all([
+      pickReread().catch(() => null),
+      countTrashExpiringSoon().catch(() => 0),
+    ]).then(([pick, soonCount]) => {
+      setReread(pick);
+      setExpiring(soonCount);
+      setNoticesReady(true);
+    });
+  }, [purged]);
+  const hasNotice = reread !== null || expiring > 0 || (purged ?? 0) > 0;
 
   const soon = [
     { name: 'AI図鑑', note: '各AIの特徴と自分のメモ' },
@@ -118,6 +166,46 @@ function Home({ onImport, onLibrary }: { onImport: () => void; onLibrary: () => 
   return (
     <section>
       <p className="tagline">集める知識、広がる私。</p>
+
+      <div className="notices" aria-live="polite">
+        <h2 className="notices-title">お知らせ</h2>
+        {!noticesReady ? (
+          <p className="hint">確認しています…</p>
+        ) : !hasNotice ? (
+          <p className="hint">いまはお知らせはありません。</p>
+        ) : (
+          <ul className="notice-list">
+            {reread && (
+              <li>
+                <button className="notice-item" onClick={() => onOpen(reread.id)}>
+                  <span className="notice-kind">読み返し</span>
+                  <span className="notice-text">
+                    {reread.daysAgo}日前に保存した「{reread.title}」を読み返してみませんか？
+                  </span>
+                </button>
+              </li>
+            )}
+            {expiring > 0 && (
+              <li>
+                <button className="notice-item is-warn" onClick={onTrash}>
+                  <span className="notice-kind">ゴミ箱</span>
+                  <span className="notice-text">
+                    あと{TRASH_WARN_DAYS}日以内に完全に削除されるものが{expiring}件あります。必要なら元に戻してください。
+                  </span>
+                </button>
+              </li>
+            )}
+            {(purged ?? 0) > 0 && (
+              <li>
+                <div className="notice-item is-static">
+                  <span className="notice-kind">ゴミ箱</span>
+                  <span className="notice-text">ゴミ箱に入れて30日たった{purged}件を、完全に削除しました。</span>
+                </div>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
 
       <div className="tiles">
         <button className="tile is-ready" onClick={onLibrary}>
