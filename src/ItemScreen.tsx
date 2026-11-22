@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { TRASH_DAYS, formatDate, getItem, imageUrls, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, formatDate, getItem, imageUrls, setReadText, trashItem, updateItem, type ItemDetail } from './library';
+import { recognize, type OcrProgress } from './ocr';
+import { suggestTitle } from './ImportScreen';
 
 /**
  * 保存した情報の詳細画面。
@@ -22,6 +24,7 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
   const [draftTitle, setDraftTitle] = useState('');
   const [draftText, setDraftText] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [reading, setReading] = useState<OcrProgress | null>(null);
 
   async function reload() {
     const detail = await getItem(id);
@@ -108,6 +111,29 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
     }
   }
 
+  /** 画像だけで保存した記事の文字を、あとから読み取る（画像全体を読む） */
+  async function readImageText() {
+    if (!item || !imageUrl) return;
+    setError('');
+    setReading({ label: '準備中', ratio: 0 });
+    try {
+      const res = await fetch(imageUrl);
+      if (!res.ok) throw new Error('画像を取り出せませんでした');
+      const blob = await res.blob();
+      const file = new File([blob], 'image', { type: blob.type || 'image/jpeg' });
+      const r = await recognize(file, setReading, []);
+      // タイトルが自動で付けた「画像のみ（…）」のままなら、読み取った文章から付け直す
+      const newTitle = item.title.startsWith('画像のみ（') && r.text.trim() ? suggestTitle(r.text) : undefined;
+      await setReadText(id, r.text, r.confidence, newTitle);
+      await reload();
+      if (!r.text.trim()) setError('文字が見つかりませんでした。文字の無い画像かもしれません。');
+    } catch (e) {
+      setError(`文字を読み取れませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setReading(null);
+    }
+  }
+
   async function moveToTrash() {
     if (!window.confirm(`「${item?.title ?? ''}」をゴミ箱に入れますか？
 ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
@@ -121,6 +147,8 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
   }
 
   const draftEdited = item !== null && draftText !== item.ocrText;
+  // 画像だけで保存した記事（読み取った文章も手直しした文章も無い）
+  const imageOnly = item !== null && !item.ocrText && !item.edited;
 
   return (
     <section>
@@ -141,7 +169,23 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </p>
 
           <div className="card">
-            <div className="item-text">{showOcr ? item.ocrText : item.body}</div>
+            {imageOnly ? (
+              <div className="image-only">
+                <p className="hint">この記事は、文字を読まずに画像だけで保存しています。文字にすると、検索やコピーができるようになります。</p>
+                {reading ? (
+                  <>
+                    <p className="progress-label">{reading.label}…</p>
+                    <div className="progress"><div style={{ width: `${Math.round(reading.ratio * 100)}%` }} /></div>
+                  </>
+                ) : (
+                  <button className="btn-primary" onClick={readImageText} disabled={!imageUrl}>
+                    画像の文字を読み取る
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="item-text">{showOcr ? item.ocrText : item.body}</div>
+            )}
             {item.edited && (
               <button className="btn-inline" onClick={() => setShowOcr((v) => !v)}>
                 {showOcr ? '手直しした文章を表示する' : '読み取ったままの文章を表示する'}

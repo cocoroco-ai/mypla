@@ -98,6 +98,27 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     }
   }
 
+  /** 文字を読まずに、画像だけすぐ保存する（あとで記事の画面から読み取れる） */
+  async function saveImageOnly() {
+    if (!file) return;
+    setError(null);
+    setSaving(true);
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const autoTitle = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
+    try {
+      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, file, regions: null });
+      setTitle(autoTitle);
+      setSaved(true);
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      console.error(e);
+      setError(`保存できませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function runOcr() {
     if (!file) return;
     setError(null);
@@ -152,7 +173,11 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         <div className="card saved-card">
           <p className="saved-icon" aria-hidden="true">✓</p>
           <p className="saved-title">{title.trim() || 'タイトルなし'}</p>
-          <p className="hint center">文章と元の画像を保存しました。ホームの「ライブラリー」から見られます。</p>
+          <p className="hint center">
+            {result
+              ? '文章と元の画像を保存しました。ホームの「ライブラリー」から見られます。'
+              : '画像を保存しました。あとでライブラリーから開いて「画像の文字を読み取る」を押すと、文字にして検索できるようになります。'}
+          </p>
         </div>
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
@@ -326,6 +351,11 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
                 : '文字を読み取る'}
             </button>
           )}
+          {!result && (
+            <button className="btn-text" onClick={saveImageOnly} disabled={saving}>
+              {saving ? '保存しています…' : '文字を読まずに画像だけ保存'}
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -341,8 +371,10 @@ const TRY_SAMPLES = [
 export function suggestTitle(text: string): string {
   const line = text
     .split('\n')
-    .map((l) => l.replace(/^[\s\d０-９.．、・●■◆▶>\-]+/, '').trim())
-    .find((l) => [...l].length >= 2);
+    // 行頭の記号と「1.」「２、」のような番号だけを外す（「1泊2日」の数字は残す）
+    .map((l) => l.replace(/^[\s・●■◆▶>\-]+/, '').replace(/^[\d０-９]+[.．、)）]\s*/, '').trim())
+    // 時刻や電池などのステータスバー（例「10:24 =1」）を避けるため、ひらがな・カタカナ・漢字・英字が2文字以上ある行を選ぶ
+    .find((l) => (l.match(/[ぁ-んァ-ヶ一-龠々a-zA-Z]/g) ?? []).length >= 2);
   if (!line) return '';
   const chars = [...line];
   return chars.length > 30 ? `${chars.slice(0, 30).join('')}…` : line;

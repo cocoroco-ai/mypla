@@ -9,7 +9,7 @@ export type SaveInput = {
   title: string;
   ocrText: string; // 読み取ったままの文章
   text: string; // 画面で手直しした後の文章
-  confidence: number;
+  confidence: number | null; // 文字を読まずに画像だけ保存したときは null
   file: File;
   regions: Region[] | null; // 範囲を囲んで読んだときだけ。全体を読んだときは null
 };
@@ -64,8 +64,8 @@ export async function saveItem(input: SaveInput): Promise<string> {
       title: input.title.trim() || 'タイトルなし',
       ocr_text: input.ocrText,
       edited_text: input.text !== input.ocrText ? input.text : null,
-      ocr_engine: 'tesseract.js',
-      ocr_confidence: Math.round(input.confidence),
+      ocr_engine: input.confidence === null ? null : 'tesseract.js',
+      ocr_confidence: input.confidence === null ? null : Math.round(input.confidence),
     })
     .select('id')
     .single();
@@ -256,6 +256,19 @@ export type ItemPatch = {
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
+/** 画像だけで保存した記事に、あとから読み取った文章を入れる（手直しなしの状態にする） */
+export async function setReadText(id: string, ocrText: string, confidence: number, title?: string): Promise<void> {
+  const values: Record<string, string | number | null> = {
+    ocr_text: ocrText,
+    edited_text: null,
+    ocr_engine: 'tesseract.js',
+    ocr_confidence: Math.round(confidence),
+  };
+  if (title !== undefined) values.title = title.trim() || 'タイトルなし';
+  const { error } = await supabase.from('items').update(values).eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
 export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   const values: Record<string, string | null> = {};
   if (patch.title !== undefined) values.title = patch.title.trim() || 'タイトルなし';

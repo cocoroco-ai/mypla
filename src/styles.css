@@ -401,3 +401,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .try-item img { width: 100%; aspect-ratio: 9 / 12; object-fit: cover; object-position: top; border-radius: 8px; background: var(--bg); }
 .try-name { font-weight: 700; font-size: 14px; color: var(--deep); }
 .try-note { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+
+/* 画像だけで保存した記事 */
+.image-only { display: grid; gap: 10px; margin-bottom: 8px; }
+.image-only .hint { margin: 0; }
