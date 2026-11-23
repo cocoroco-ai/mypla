@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { TRASH_DAYS, formatDate, getItem, imageUrls, setReadText, trashItem, updateItem, type ItemDetail } from './library';
+import { useEffect, useRef, useState } from 'react';
+import { TRASH_DAYS, addImagesToItem, appendReadText, formatDate, getItem, imageUrls, setReadText, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -10,7 +10,10 @@ import { suggestTitle } from './ImportScreen';
  */
 export default function ItemScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const [item, setItem] = useState<ItemDetail | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrlList, setImageUrlList] = useState<string[]>([]);
+  const imageUrl = imageUrlList[0] ?? null;
+  const addRef = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
   const [showOcr, setShowOcr] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -26,6 +29,59 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
   const [savingEdit, setSavingEdit] = useState(false);
   const [reading, setReading] = useState<OcrProgress | null>(null);
 
+  async function loadImages(detail: ItemDetail) {
+    if (detail.imagePaths.length === 0) return setImageUrlList([]);
+    const map = await imageUrls(detail.imagePaths);
+    setImageUrlList(detail.imagePaths.map((p) => map[p]).filter(Boolean));
+  }
+
+  async function readFiles(urls: string[]) {
+    const texts: string[] = [];
+    let confidence = 0;
+    for (const [i, url] of urls.entries()) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('画像を取り出せませんでした');
+      const blob = await res.blob();
+      const file = new File([blob], 'image', { type: blob.type || 'image/jpeg' });
+      const r = await recognize(
+        file,
+        (p) => setReading(urls.length > 1 ? { label: `${i + 1}/${urls.length}枚目：${p.label}`, ratio: (i + p.ratio) / urls.length } : p),
+        [],
+      );
+      if (r.text.trim()) texts.push(r.text);
+      confidence += r.confidence;
+    }
+    return { text: texts.join('\n\n'), confidence: urls.length ? confidence / urls.length : 0 };
+  }
+
+  /** 続きの画像を足す。文字にしてある記事なら、足した画像も読み取って文章の最後につなげる */
+  async function addImages(list: FileList | null) {
+    if (!item) return;
+    const files = [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setError('');
+    setAdding(true);
+    try {
+      const before = item.imagePaths.length;
+      await addImagesToItem(id, files);
+      const detail = await reload();
+      const map = await imageUrls(detail.imagePaths);
+      const urls = detail.imagePaths.map((p) => map[p]).filter(Boolean);
+      setImageUrlList(urls);
+      if (!imageOnly) {
+        setReading({ label: '準備中', ratio: 0 });
+        const r = await readFiles(urls.slice(before));
+        await appendReadText(detail, r.text);
+        await reload();
+      }
+    } catch (e) {
+      setError(`画像を足せませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setReading(null);
+      setAdding(false);
+    }
+  }
+
   async function reload() {
     const detail = await getItem(id);
     setItem(detail);
@@ -37,10 +93,7 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
     (async () => {
       try {
         const detail = await reload();
-        if (detail.imagePath) {
-          const map = await imageUrls([detail.imagePath]);
-          setImageUrl(map[detail.imagePath] ?? null);
-        }
+        await loadImages(detail);
       } catch (e) {
         setError(e instanceof Error ? e.message : '読み込めませんでした。');
       }
@@ -113,15 +166,11 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
 
   /** 画像だけで保存した記事の文字を、あとから読み取る（画像全体を読む） */
   async function readImageText() {
-    if (!item || !imageUrl) return;
+    if (!item || imageUrlList.length === 0) return;
     setError('');
     setReading({ label: '準備中', ratio: 0 });
     try {
-      const res = await fetch(imageUrl);
-      if (!res.ok) throw new Error('画像を取り出せませんでした');
-      const blob = await res.blob();
-      const file = new File([blob], 'image', { type: blob.type || 'image/jpeg' });
-      const r = await recognize(file, setReading, []);
+      const r = await readFiles(imageUrlList);
       // タイトルが自動で付けた「画像のみ（…）」のままなら、読み取った文章から付け直す
       const newTitle = item.title.startsWith('画像のみ（') && r.text.trim() ? suggestTitle(r.text) : undefined;
       await setReadText(id, r.text, r.confidence, newTitle);
@@ -215,15 +264,32 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             </button>
           </div>
 
-          {imageUrl && (
-            <div className="card">
-              <h2 className="card-title">元の画像</h2>
-              <a href={imageUrl} target="_blank" rel="noreferrer">
-                <img className="item-image" src={imageUrl} alt="保存した元の画像" />
+          <div className="card">
+            <h2 className="card-title">元の画像{imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}</h2>
+            {imageUrlList.map((url, i) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer" className="item-image-link">
+                {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
+                <img className="item-image" src={url} alt={`保存した元の画像（${i + 1}枚目）`} />
               </a>
-              <p className="hint">画像を押すと、大きく表示できます。</p>
-            </div>
-          )}
+            ))}
+            {imageUrlList.length > 0 && <p className="hint">画像を押すと、大きく表示できます。</p>}
+            <input
+              ref={addRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => { addImages(e.target.files); e.target.value = ''; }}
+            />
+            <button className="btn-secondary" onClick={() => addRef.current?.click()} disabled={adding || reading !== null}>
+              {adding ? '画像を足しています…' : '＋ 続きの画像を足す'}
+            </button>
+            <p className="hint">
+              {imageOnly
+                ? '足した画像は、この記事の後ろに並びます。'
+                : '足した画像も文字を読み取って、文章の最後につなげます。'}
+            </p>
+          </div>
 
           <button className="btn-danger" onClick={moveToTrash}>
             ゴミ箱に入れる

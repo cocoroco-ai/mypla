@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { recognize, type OcrProgress, type OcrResult, type Region, type RemovedLine } from './ocr';
 import RegionSelector from './RegionSelector';
-import { saveItem } from './library';
+import { saveImagesOnly, saveItem } from './library';
 
 type Result = OcrResult;
 
 export default function ImportScreen({ onBack }: { onBack: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const moreRef = useRef<HTMLInputElement>(null);
+  const bulkRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  // 続きのスクショ（2枚目以降）。1件にまとめて保存する
+  const [extraFiles, setExtraFiles] = useState<{ file: File; url: string }[]>([]);
+  // まとめて取り込み（画像だけ・1枚ずつ別の記事）
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ saved: number; stoppedReason: string | null } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -53,6 +60,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     }
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
+    setExtraFiles([]);
     setResult(null);
     setText('');
     setOcrText('');
@@ -68,6 +76,8 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
   /** 続けて別のスクショを取り込むために、最初の状態に戻す */
   function reset() {
     setFile(null);
+    setExtraFiles([]);
+    setBulkResult(null);
     setPreviewUrl(null);
     setResult(null);
     setText('');
@@ -82,12 +92,50 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     setError(null);
   }
 
+  /** 続きの画像を足す（読み取り済みなら、読み直しが必要になる） */
+  function addMore(list: FileList | null) {
+    const images = [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+    if (images.length === 0) return;
+    setExtraFiles((cur) => [...cur, ...images.map((f) => ({ file: f, url: URL.createObjectURL(f) }))]);
+    clearResult();
+  }
+
+  function removeExtra(index: number) {
+    setExtraFiles((cur) => cur.filter((_, i) => i !== index));
+    clearResult();
+  }
+
+  function clearResult() {
+    setResult(null);
+    setText('');
+    setOcrText('');
+    setRemoved([]);
+    setUsedRegions(null);
+  }
+
+  /** 何枚かを一度に選んで、文字を読まずに1枚ずつ保存する */
+  async function bulkSave(list: FileList | null) {
+    const images = [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+    if (images.length === 0) return;
+    setError(null);
+    setBulk({ done: 0, total: images.length });
+    try {
+      const r = await saveImagesOnly(images, (done, total) => setBulk({ done, total }));
+      setBulkResult(r);
+      window.scrollTo({ top: 0 });
+    } finally {
+      setBulk(null);
+    }
+  }
+
+  const allFiles = file ? [file, ...extraFiles.map((x) => x.file)] : [];
+
   async function save() {
     if (!file || !result) return;
     setError(null);
     setSaving(true);
     try {
-      await saveItem({ title, ocrText, text, confidence: result.confidence, file, regions: usedRegions });
+      await saveItem({ title, ocrText, text, confidence: result.confidence, files: allFiles, regions: usedRegions });
       setSaved(true);
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -107,7 +155,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     const p = (n: number) => String(n).padStart(2, '0');
     const autoTitle = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
     try {
-      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, file, regions: null });
+      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, files: allFiles, regions: null });
       setTitle(autoTitle);
       setSaved(true);
       window.scrollTo({ top: 0 });
@@ -126,7 +174,19 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     setProgress({ label: '準備中', ratio: 0 });
     try {
       const used = selecting ? regions : [];
-      const r = await recognize(file, setProgress, used);
+      // 1枚目は（囲んだ範囲があれば）その範囲、2枚目以降は全体を読み、上から順につなげる
+      const total = allFiles.length;
+      const label = (i: number) => (p: OcrProgress) =>
+        setProgress(total > 1 ? { label: `${i + 1}/${total}枚目：${p.label}`, ratio: (i + p.ratio) / total } : p);
+      const parts: OcrResult[] = [];
+      for (const [i, f] of allFiles.entries()) parts.push(await recognize(f, label(i), i === 0 ? used : []));
+      const r: OcrResult = {
+        ...parts[0],
+        text: parts.map((x) => x.text).filter(Boolean).join('\n\n'),
+        removed: parts.flatMap((x) => x.removed),
+        confidence: Math.round(parts.reduce((sum, x) => sum + x.confidence, 0) / parts.length),
+        seconds: Math.round(parts.reduce((sum, x) => sum + x.seconds, 0) * 10) / 10,
+      };
       setResult(r);
       setUsedRegions(used.length ? used : null);
       setText(r.text);
@@ -165,6 +225,28 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
   }
 
   const busy = progress !== null || saving;
+
+  if (bulkResult) {
+    return (
+      <section>
+        <h1 className="screen-title">まとめて保存しました</h1>
+        <div className="card saved-card">
+          <p className="saved-icon" aria-hidden="true">✓</p>
+          <p className="saved-title">{bulkResult.saved}件を画像だけで保存しました</p>
+          {bulkResult.stoppedReason && (
+            <p className="error" role="alert">途中で止まりました：{bulkResult.stoppedReason}</p>
+          )}
+          <p className="hint center">
+            ライブラリーの「整理待ち」にまとまっています。時間のあるときに開いて、「画像の文字を読み取る」で文字にできます。
+          </p>
+        </div>
+        <div className="bottom-action">
+          <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
+          <button className="btn-text" onClick={onBack}>ホームに戻る</button>
+        </div>
+      </section>
+    );
+  }
 
   if (saved) {
     return (
@@ -207,6 +289,33 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
           <span className="sub">写真アプリのスクリーンショットから選べます</span>
         </button>
       ) : null}
+
+      {!previewUrl && (
+        <div className="card bulk-card">
+          <h2 className="bulk-title">まとめて取り込む（あとで整理）</h2>
+          <p className="hint">
+            何枚かを一度に選んで、文字を読まずに画像だけで保存します。1枚ずつ別の記事になり、ライブラリーの「整理待ち」に入ります。
+          </p>
+          <input
+            ref={bulkRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => { bulkSave(e.target.files); e.target.value = ''; }}
+          />
+          {bulk ? (
+            <>
+              <p className="progress-label">保存しています… {bulk.done} / {bulk.total} 枚</p>
+              <div className="progress"><div style={{ width: `${Math.round((bulk.done / bulk.total) * 100)}%` }} /></div>
+            </>
+          ) : (
+            <button className="btn-secondary" onClick={() => bulkRef.current?.click()}>
+              画像をまとめて選ぶ
+            </button>
+          )}
+        </div>
+      )}
 
       {!previewUrl && (
         <div className="try-samples">
@@ -265,6 +374,38 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
               {selecting && regions.length ? `囲んだ${regions.length}か所を読み取り直す` : 'もう一度読み取る'}
             </button>
           )}
+          <div className="extra-images">
+            <p className="extra-title">
+              続きのスクショ{extraFiles.length > 0 ? `（${extraFiles.length + 1}枚で1件にまとめます）` : ''}
+            </p>
+            {extraFiles.length > 0 && (
+              <ul className="extra-list">
+                {extraFiles.map((x, i) => (
+                  <li key={x.url}>
+                    <img src={x.url} alt={`${i + 2}枚目`} />
+                    <span className="extra-no">{i + 2}</span>
+                    <button className="extra-remove" onClick={() => removeExtra(i)} disabled={busy} aria-label={`${i + 2}枚目を外す`}>
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <input
+              ref={moreRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => { addMore(e.target.files); e.target.value = ''; }}
+            />
+            <button className="btn-small" onClick={() => moreRef.current?.click()} disabled={busy}>
+              ＋ 続きの画像を追加
+            </button>
+            {extraFiles.length > 0 && selecting && (
+              <p className="hint">範囲を囲めるのは1枚目だけです。2枚目以降は画像全体を読みます。</p>
+            )}
+          </div>
           <button className="btn-text" onClick={() => inputRef.current?.click()} disabled={busy}>
             別の画像を選ぶ
           </button>
@@ -374,7 +515,11 @@ export function suggestTitle(text: string): string {
     // 行頭の記号と「1.」「２、」のような番号だけを外す（「1泊2日」の数字は残す）
     .map((l) => l.replace(/^[\s・●■◆▶>\-]+/, '').replace(/^[\d０-９]+[.．、)）]\s*/, '').trim())
     // 時刻や電池などのステータスバー（例「10:24 =1」）を避けるため、ひらがな・カタカナ・漢字・英字が2文字以上ある行を選ぶ
-    .find((l) => (l.match(/[ぁ-んァ-ヶ一-龠々a-zA-Z]/g) ?? []).length >= 2);
+    .find(
+      (l) =>
+        !/^\d{1,2}\s*[:：]\s*\d{2}/.test(l) && // 「10:24」のような時刻で始まる行（ステータスバー）は使わない
+        ((l.match(/[ぁ-んァ-ヶ一-龠々]/g) ?? []).length >= 2 || (l.match(/[a-zA-Z]/g) ?? []).length >= 4),
+    );
   if (!line) return '';
   const chars = [...line];
   return chars.length > 30 ? `${chars.slice(0, 30).join('')}…` : line;

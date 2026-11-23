@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { countTrash, formatDate, imageUrls, listItems, searchWords, type ItemSummary } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, searchWords, type ItemSummary } from './library';
 
 const PAGE = 20;
 
@@ -20,6 +20,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   const [input, setInput] = useState('');
   const [query, setQuery] = useState(''); // 実際に検索した言葉
   const [trashCount, setTrashCount] = useState(0);
+  // 整理待ち（画像だけで保存して、まだ文字にしていないもの）だけを表示するか
+  const [unsorted, setUnsorted] = useState(false);
+  const [unsortedCount, setUnsortedCount] = useState(0);
   const requestNo = useRef(0); // 速く打ったときに、古い検索結果で上書きしないための番号
 
   async function load(offset: number, q: string) {
@@ -27,7 +30,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q);
+      const page = await listItems(offset, PAGE, q, unsorted);
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -49,10 +52,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
 
   useEffect(() => {
     load(0, query);
-  }, [query]);
+  }, [query, unsorted]);
 
   useEffect(() => {
     countTrash().then(setTrashCount).catch(() => setTrashCount(0));
+    countUnsorted().then(setUnsortedCount).catch(() => setUnsortedCount(0));
   }, []);
 
   const words = searchWords(query);
@@ -88,6 +92,20 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
           </button>
         )}
       </form>
+
+      {(unsortedCount > 0 || unsorted) && (
+        <div className="segmented library-filter" role="group" aria-label="表示する記事">
+          <button className={!unsorted ? 'is-on' : ''} onClick={() => setUnsorted(false)}>すべて</button>
+          <button className={unsorted ? 'is-on' : ''} onClick={() => setUnsorted(true)}>
+            整理待ち（{unsortedCount}件）
+          </button>
+        </div>
+      )}
+      {unsorted && (
+        <p className="hint">
+          画像だけで保存したものです。開いて「画像の文字を読み取る」を押すと文字になり、ここから外れます。
+        </p>
+      )}
 
       {!loading && !error && (
         <p className="meta result-count">

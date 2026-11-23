@@ -12,7 +12,10 @@ import {
   countItems,
   cleanupExpiredGuests,
   countTrashExpiringSoon,
+  myImageQuota,
   myQuota,
+  usageSummary,
+  type Usage,
   pickReread,
   purgeExpiredTrash,
   TRASH_WARN_DAYS,
@@ -208,9 +211,18 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   }, [purged]);
   // 保存数の上限（上限のある人だけ表示）
   const [quota, setQuota] = useState<{ limit: number; used: number } | null>(null);
+  const [imageQuota, setImageQuota] = useState<{ limit: number; used: number } | null>(null);
   useEffect(() => {
     myQuota().then(setQuota).catch(() => setQuota(null));
+    myImageQuota().then(setImageQuota).catch(() => setImageQuota(null));
   }, [dataVersion]);
+
+  // 管理者だけ：無料枠の使用量
+  const [usage, setUsage] = useState<Usage | null>(null);
+  useEffect(() => {
+    if (isGuest) return;
+    usageSummary().then(setUsage).catch(() => setUsage(null));
+  }, [isGuest]);
 
   const hasNotice = reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
 
@@ -247,6 +259,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           {quota && (
             <span>
               保存できるのは{quota.limit}件まで（あと{Math.max(0, quota.limit - quota.used)}件。ゴミ箱の中も数えます）。
+              {imageQuota && `画像は${imageQuota.limit}枚まで（あと${Math.max(0, imageQuota.limit - imageQuota.used)}枚）。`}
             </span>
           )}
           {isGuest && (
@@ -349,6 +362,17 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         ))}
       </div>
 
+      {usage && (
+        <div className="card usage-card">
+          <h2 className="usage-title">無料枠の使用量（管理者だけに表示）</h2>
+          <UsageBar label="画像の保管場所" used={usage.storageMB} max={1024} />
+          <UsageBar label="データベース" used={usage.databaseMB} max={500} />
+          <p className="hint">
+            利用者 {usage.users}人（うちお試し {usage.guests}人）・画像 {usage.images}枚。どちらかが8割を超えたら、整理や上限の見直しを考えましょう。
+          </p>
+        </div>
+      )}
+
       <button className="home-link" onClick={onBackup}>
         データの書き出し・読み込み（バックアップ）
       </button>
@@ -359,5 +383,23 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </button>
       </div>
     </section>
+  );
+}
+
+function UsageBar({ label, used, max }: { label: string; used: number; max: number }) {
+  const ratio = Math.min(1, used / max);
+  const level = ratio >= 0.8 ? 'is-danger' : ratio >= 0.6 ? 'is-warn' : '';
+  return (
+    <div className="usage-row">
+      <div className="usage-label">
+        <span>{label}</span>
+        <span>
+          {used} MB / {max} MB（{Math.round(ratio * 100)}%）
+        </span>
+      </div>
+      <div className={`usage-bar ${level}`}>
+        <div style={{ width: `${Math.max(1, Math.round(ratio * 100))}%` }} />
+      </div>
+    </div>
   );
 }

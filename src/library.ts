@@ -10,8 +10,8 @@ export type SaveInput = {
   ocrText: string; // 読み取ったままの文章
   text: string; // 画面で手直しした後の文章
   confidence: number | null; // 文字を読まずに画像だけ保存したときは null
-  file: File;
-  regions: Region[] | null; // 範囲を囲んで読んだときだけ。全体を読んだときは null
+  files: File[]; // 1枚目から順に（続きのスクショをまとめて1件にできる）
+  regions: Region[] | null; // 1枚目を範囲を囲んで読んだときだけ。全体を読んだときは null
 };
 
 type PreparedImage = { blob: Blob; mime: string; ext: string; width: number; height: number };
@@ -46,6 +46,65 @@ async function prepareForUpload(file: File): Promise<PreparedImage> {
 }
 
 /**
+ * 画像を保管庫に入れて記録する（position は startPosition から順に）。
+ * 途中で失敗したら、この呼び出しで入れた画像を消してから失敗を伝える
+ */
+async function uploadImages(
+  userId: string,
+  itemId: string,
+  images: PreparedImage[],
+  startPosition: number,
+  firstRegions: Region[] | null,
+): Promise<void> {
+  const uploaded: string[] = [];
+  try {
+    for (const [i, image] of images.entries()) {
+      const position = startPosition + i;
+      const path = `${userId}/${itemId}/${position + 1}-${Date.now().toString(36)}.${image.ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, image.blob, { contentType: image.mime, upsert: false });
+      if (uploadError) throw new Error(toJapaneseError(uploadError.message));
+      uploaded.push(path);
+      const { error: imageError } = await supabase.from('item_images').insert({
+        item_id: itemId,
+        position,
+        storage_path: path,
+        mime: image.mime,
+        bytes: image.blob.size,
+        width: image.width,
+        height: image.height,
+        regions: i === 0 && firstRegions && firstRegions.length > 0 ? firstRegions : null,
+      });
+      if (imageError) throw new Error(toJapaneseError(imageError.message));
+    }
+  } catch (e) {
+    if (uploaded.length > 0) {
+      await supabase.storage.from(BUCKET).remove(uploaded);
+      await supabase.from('item_images').delete().in('storage_path', uploaded);
+    }
+    throw e;
+  }
+}
+
+/** 保存済みの記事に、続きの画像を足す（今ある画像の後ろに並べる） */
+export async function addImagesToItem(itemId: string, files: File[]): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error('ログインの有効期限が切れました。もう一度ログインしてください。');
+  const { data, error } = await supabase
+    .from('item_images')
+    .select('position')
+    .eq('item_id', itemId)
+    .order('position', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(toJapaneseError(error.message));
+  const next = data && data.length > 0 ? (data[0].position as number) + 1 : 0;
+  const images: PreparedImage[] = [];
+  for (const f of files) images.push(await prepareForUpload(f));
+  await uploadImages(userData.user.id, itemId, images, next, null);
+}
+
+/**
  * 読み取った文章と元画像を保存する。
  * 途中で失敗したときは、作りかけのデータを消して「保存されていない」状態に戻す。
  * 戻り値：保存した記事の id
@@ -55,7 +114,9 @@ export async function saveItem(input: SaveInput): Promise<string> {
   if (userError || !userData.user) throw new Error('ログインの有効期限が切れました。もう一度ログインしてください。');
   const userId = userData.user.id;
 
-  const image = await prepareForUpload(input.file);
+  if (input.files.length === 0) throw new Error('画像がありません');
+  const images: PreparedImage[] = [];
+  for (const f of input.files) images.push(await prepareForUpload(f));
 
   // 1. 文章を保存（手直ししていなければ edited_text は空のまま）
   const { data: item, error: itemError } = await supabase
@@ -71,31 +132,11 @@ export async function saveItem(input: SaveInput): Promise<string> {
     .single();
   if (itemError || !item) throw new Error(toJapaneseError(itemError?.message ?? '保存できませんでした'));
 
-  const path = `${userId}/${item.id}/1.${image.ext}`;
-  let uploaded = false;
   try {
-    // 2. 元画像を保管庫へ（自分の user_id のフォルダの中）
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, image.blob, { contentType: image.mime, upsert: false });
-    if (uploadError) throw new Error(toJapaneseError(uploadError.message));
-    uploaded = true;
-
-    // 3. 画像の情報を記録
-    const { error: imageError } = await supabase.from('item_images').insert({
-      item_id: item.id,
-      position: 0,
-      storage_path: path,
-      mime: image.mime,
-      bytes: image.blob.size,
-      width: image.width,
-      height: image.height,
-      regions: input.regions && input.regions.length > 0 ? input.regions : null,
-    });
-    if (imageError) throw new Error(toJapaneseError(imageError.message));
+    // 2. 元画像を保管庫へ（自分の user_id のフォルダの中）、3. 画像の情報を記録
+    await uploadImages(userId, item.id, images, 0, input.regions);
   } catch (e) {
     // 作りかけを片付ける（文章を消すと画像の記録も一緒に消える）
-    if (uploaded) await supabase.storage.from(BUCKET).remove([path]);
     await supabase.from('items').delete().eq('id', item.id);
     throw e;
   }
@@ -127,6 +168,7 @@ export type ItemSummary = {
 };
 
 export type ItemDetail = ItemSummary & {
+  imagePaths: string[]; // すべての画像（並び順）
   ocrText: string;
   editedText: string | null;
   ocrConfidence: number | null;
@@ -169,11 +211,14 @@ export async function listItems(
   offset: number,
   limit: number,
   query = '',
+  onlyUnsorted = false,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
     .select(COLUMNS, { count: 'exact' })
     .is('deleted_at', null);
+  // 整理待ち：文字を読まずに画像だけで保存したもの
+  if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -216,6 +261,7 @@ export async function getItem(id: string): Promise<ItemDetail> {
   const row = data as Row;
   return {
     ...toSummary(row),
+    imagePaths: [...(row.item_images ?? [])].sort((a, b) => a.position - b.position).map((i) => i.storage_path),
     ocrText: row.ocr_text,
     editedText: row.edited_text,
     ocrConfidence: row.ocr_confidence,
@@ -266,6 +312,16 @@ export async function setReadText(id: string, ocrText: string, confidence: numbe
   };
   if (title !== undefined) values.title = title.trim() || 'タイトルなし';
   const { error } = await supabase.from('items').update(values).eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** 足した画像から読み取った文章を、今の文章の最後につなげる（手直しした文章があれば、そちらにも） */
+export async function appendReadText(item: ItemDetail, added: string): Promise<void> {
+  if (!added.trim()) return;
+  const join = (t: string) => (t.trim() ? `${t}\n\n${added}` : added);
+  const values: Record<string, string> = { ocr_text: join(item.ocrText) };
+  if (item.editedText !== null) values.edited_text = join(item.editedText);
+  const { error } = await supabase.from('items').update(values).eq('id', item.id);
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
@@ -344,6 +400,43 @@ export async function deleteForever(ids: string[]): Promise<void> {
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
+/** 整理待ち（画像だけで保存して、まだ文字にしていないもの）の件数 */
+export async function countUnsorted(): Promise<number> {
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
+    .eq('ocr_text', '')
+    .is('edited_text', null);
+  if (error) throw new Error(toJapaneseError(error.message));
+  return count ?? 0;
+}
+
+/**
+ * 何枚かの画像を、文字を読まずに1枚ずつ別の記事として保存する（まとめて取り込み）。
+ * 上限などで途中から保存できなくなったら、そこで止めて理由を返す
+ */
+export async function saveImagesOnly(
+  files: File[],
+  onProgress: (done: number, total: number) => void,
+): Promise<{ saved: number; stoppedReason: string | null }> {
+  let saved = 0;
+  onProgress(0, files.length);
+  for (const file of files) {
+    const d = file.lastModified ? new Date(file.lastModified) : new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const title = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
+    try {
+      await saveItem({ title, ocrText: '', text: '', confidence: null, files: [file], regions: null });
+      saved++;
+      onProgress(saved, files.length);
+    } catch (e) {
+      return { saved, stoppedReason: e instanceof Error ? e.message : '保存できませんでした' };
+    }
+  }
+  return { saved, stoppedReason: null };
+}
+
 // ---------------------------------------------------------------------
 // 保存数の上限（お試しの人など。管理者は上限なし）
 // ---------------------------------------------------------------------
@@ -376,6 +469,32 @@ export async function cleanupExpiredGuests(): Promise<number> {
   const { data, error } = await supabase.rpc('delete_expired_guests');
   if (error) throw new Error(toJapaneseError(error.message));
   return (data as number) ?? 0;
+}
+
+/** 自分の画像の上限と使っている枚数。上限なしなら null */
+export async function myImageQuota(): Promise<{ limit: number; used: number } | null> {
+  const { data, error } = await supabase.rpc('my_image_quota');
+  if (error) throw new Error(toJapaneseError(error.message));
+  const row = (data as { image_limit: number | null; images_used: number }[] | null)?.[0];
+  if (!row || row.image_limit === null) return null;
+  return { limit: row.image_limit, used: Number(row.images_used) };
+}
+
+export type Usage = { storageMB: number; databaseMB: number; users: number; guests: number; images: number };
+/** 管理者だけ：無料枠の使用量。管理者でなければ null */
+export async function usageSummary(): Promise<Usage | null> {
+  const { data, error } = await supabase.rpc('usage_summary');
+  if (error) throw new Error(toJapaneseError(error.message));
+  const row = (data as Record<string, number>[] | null)?.[0];
+  if (!row) return null;
+  const mb = (b: number) => Math.round((Number(b) / 1024 / 1024) * 10) / 10;
+  return {
+    storageMB: mb(row.storage_bytes),
+    databaseMB: mb(row.database_bytes),
+    users: Number(row.users_total),
+    guests: Number(row.guests_total),
+    images: Number(row.images_total),
+  };
 }
 
 // ---------------------------------------------------------------------
