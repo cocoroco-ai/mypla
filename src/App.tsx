@@ -5,6 +5,7 @@ import LoginScreen from './LoginScreen';
 import LibraryScreen from './LibraryScreen';
 import ItemScreen from './ItemScreen';
 import TrashScreen from './TrashScreen';
+import ShelfManager from './ShelfManager';
 import BackupScreen from './BackupScreen';
 import { isConfigured, supabase } from './supabase';
 import { addSampleItems } from './samples';
@@ -12,10 +13,11 @@ import {
   countItems,
   cleanupExpiredGuests,
   countByShelf,
+  countUnsorted,
+  listShelves,
   pickTodayWord,
-  SHELVES,
   type ItemSummary,
-  type ShelfId,
+  type Shelf,
   countTrashExpiringSoon,
   myImageQuota,
   myQuota,
@@ -32,7 +34,8 @@ type Screen =
   | { name: 'import' }
   | { name: 'library' }
   | { name: 'item'; id: string; back?: Screen }
-  | { name: 'shelf'; shelf: ShelfId }
+  | { name: 'shelf'; shelf: Shelf }
+  | { name: 'shelves' }
   | { name: 'trash' }
   | { name: 'backup' };
 
@@ -130,6 +133,7 @@ export default function App() {
             onLibrary={library}
             onOpen={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })}
             onShelf={(shelf) => setScreen({ name: 'shelf', shelf })}
+            onManageShelves={() => setScreen({ name: 'shelves' })}
             onTrash={() => setScreen({ name: 'trash' })}
             onBackup={() => setScreen({ name: 'backup' })}
           />
@@ -148,7 +152,7 @@ export default function App() {
       case 'shelf':
         return (
           <LibraryScreen
-            key={screen.shelf}
+            key={screen.shelf.id}
             shelf={screen.shelf}
             onBack={home}
             onImport={importShot}
@@ -156,6 +160,8 @@ export default function App() {
             onTrash={() => setScreen({ name: 'trash' })}
           />
         );
+      case 'shelves':
+        return <ShelfManager onBack={home} />;
       case 'trash':
         return <TrashScreen onBack={library} />;
       case 'backup':
@@ -196,7 +202,7 @@ export default function App() {
 function backLabel(back?: Screen): string {
   if (!back || back.name === 'library') return 'ライブラリー';
   if (back.name === 'home') return 'ホーム';
-  if (back.name === 'shelf') return SHELVES.find((s) => s.id === back.shelf)?.name ?? 'ライブラリー';
+  if (back.name === 'shelf') return back.shelf.name;
   return '戻る';
 }
 
@@ -209,12 +215,13 @@ type HomeProps = {
   onImport: () => void;
   onLibrary: () => void;
   onOpen: (id: string) => void;
-  onShelf: (shelf: ShelfId) => void;
+  onShelf: (shelf: Shelf) => void;
+  onManageShelves: () => void;
   onTrash: () => void;
   onBackup: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -224,25 +231,34 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   // お知らせ（ゴミ箱の自動削除が終わってから調べる）
   const [reread, setReread] = useState<RereadPick | null>(null);
   const [todayWord, setTodayWord] = useState<ItemSummary | null>(null);
-  const [shelfCounts, setShelfCounts] = useState<Record<ShelfId, number> | null>(null);
+  const [shelves, setShelves] = useState<Shelf[] | null>(null);
+  const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
+  const [unsortedCount, setUnsortedCount] = useState(0);
   useEffect(() => {
-    countByShelf().then(setShelfCounts).catch(() => setShelfCounts(null));
+    listShelves()
+      .then((list) => {
+        setShelves(list);
+        return countByShelf(list);
+      })
+      .then(setShelfCounts)
+      .catch(() => setShelves([]));
+    countUnsorted().then(setUnsortedCount).catch(() => setUnsortedCount(0));
   }, [dataVersion]);
   const [expiring, setExpiring] = useState(0);
   const [noticesReady, setNoticesReady] = useState(false);
   useEffect(() => {
-    if (purged === null) return;
+    if (purged === null || shelves === null) return;
     Promise.all([
       pickReread().catch(() => null),
       countTrashExpiringSoon().catch(() => 0),
-      pickTodayWord().catch(() => null),
+      pickTodayWord(shelves).catch(() => null),
     ]).then(([pick, soonCount, word]) => {
       setReread(pick);
       setTodayWord(word);
       setExpiring(soonCount);
       setNoticesReady(true);
     });
-  }, [purged]);
+  }, [purged, shelves]);
   // 保存数の上限（上限のある人だけ表示）
   const [quota, setQuota] = useState<{ limit: number; used: number } | null>(null);
   const [imageQuota, setImageQuota] = useState<{ limit: number; used: number } | null>(null);
@@ -386,20 +402,24 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
       </div>
 
       <div className="tiles">
-        <button className="tile is-ready" onClick={onLibrary}>
-          <span className="tile-name">ライブラリー</span>
-          <span className="tile-note">保存した情報の一覧</span>
+        <button className="tile is-ready tile-library" onClick={onLibrary}>
+          <span className="tile-name">📚 ライブラリー</span>
+          <span className="tile-note">
+            すべての保管庫{unsortedCount > 0 ? `・整理待ち ${unsortedCount}件` : ''}
+          </span>
           <span className="badge">{count === null ? '開く' : `${count}件`}</span>
         </button>
-        {SHELVES.map((t) => (
-          <button key={t.id} className={`tile is-ready shelf-${t.id}`} onClick={() => onShelf(t.id)}>
+        {(shelves ?? []).map((t) => (
+          <button key={t.id} className={`tile is-ready ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
             <span className="tile-name">
               {t.icon} {t.name}
             </span>
-            <span className="tile-note">{t.note}</span>
-            <span className="badge">{shelfCounts ? `${shelfCounts[t.id]}件` : '開く'}</span>
+            <span className="badge">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : '開く'}</span>
           </button>
         ))}
+        <button className="tile tile-add" onClick={onManageShelves}>
+          <span className="tile-name">＋ 棚を追加・編集</span>
+        </button>
       </div>
 
       {usage && (

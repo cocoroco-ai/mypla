@@ -20,6 +20,8 @@ export function toJapaneseError(message: string): string {
     const n = message.match(/(\d+)\s*件/)?.[1];
     return `保存できる上限${n ? `（${n}件）` : ''}に達しました。ゴミ箱の中も数に入るので、要らないものを「完全に削除」すると、また保存できます。`;
   }
+  if (m.includes('mypla_shelf_limit')) return '棚は20個までです。使っていない棚を削除してから追加してください。';
+  if (m.includes('shelves_name_check')) return '棚の名前は1〜30文字で入れてください。';
   if (m.includes('signups not allowed') || m.includes('anonymous sign-ins are disabled')) return 'いまはお試し利用を受け付けていません。';
   if (m.includes('exceeded the maximum allowed size') || m.includes('payload too large')) return '画像が大きすぎます（5MBまで）。';
   if (m.includes('row-level security') && m.includes('objects')) return '保存できる画像の上限に達しました。要らないものを「完全に削除」してからお試しください。';

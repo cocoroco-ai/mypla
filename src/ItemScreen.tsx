@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, SHELVES, shelfOf, type ShelfId, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, type Shelf, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -160,19 +160,25 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
   const [source, setSource] = useState('');
   const [sourceState, setSourceState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [shelfBusy, setShelfBusy] = useState(false);
+  const [shelves, setShelves] = useState<Shelf[]>([]);
+  useEffect(() => {
+    listShelves().then(setShelves).catch(() => setShelves([]));
+  }, []);
+  const currentShelf = shelves.find((x) => x.id === item?.shelfId) ?? null;
   useEffect(() => {
     if (item) setSource(item.source);
   }, [item?.id, item?.source]);
   const sourceDirty = item !== null && source.trim() !== item.source;
 
-  async function moveToShelf(next: ShelfId | null) {
-    if (!item || next === item.shelf) return;
+  async function moveToShelf(next: Shelf | null) {
+    if (!item || (next?.id ?? null) === item.shelfId) return;
     setError('');
     setShelfBusy(true);
     try {
-      await updateItem(id, { shelf: next });
+      await updateItem(id, { shelfId: next?.id ?? null });
       await reload();
-      setNotice(next ? `「${shelfOf(next)?.name}」に移しました（ライブラリーにも残っています）。` : '棚から外しました（ライブラリーには残っています）。');
+      setNotice(next ? `「${next.name}」に移しました（ライブラリーにも残っています）。` : '棚から外しました（ライブラリーには残っています）。');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       setError(`移せませんでした。${e instanceof Error ? e.message : ''}`);
     } finally {
@@ -397,24 +403,25 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             <h2 className="card-title">棚に移す</h2>
             <p className="hint">特に分けたいときに選びます。どの棚に移しても、ライブラリーにも残ります。</p>
             <div className="shelf-choices" role="group" aria-label="置く棚">
-              {SHELVES.map((sh) => (
+              {shelves.map((sh) => (
                 <button
                   key={sh.id}
-                  className={`shelf-choice ${item.shelf === sh.id ? 'is-on' : ''}`}
-                  onClick={() => moveToShelf(sh.id)}
+                  className={`shelf-choice ${item.shelfId === sh.id ? 'is-on' : ''}`}
+                  onClick={() => moveToShelf(sh)}
                   disabled={shelfBusy}
-                  aria-pressed={item.shelf === sh.id}
+                  aria-pressed={item.shelfId === sh.id}
                 >
                   {sh.icon} {sh.name}
                 </button>
               ))}
             </div>
-            {item.shelf && (
+            {shelves.length === 0 && <p className="hint">棚がありません。ホームの「＋ 棚を追加・編集」で作れます。</p>}
+            {item.shelfId && (
               <button className="btn-text" onClick={() => moveToShelf(null)} disabled={shelfBusy}>
                 棚から外す（ライブラリーだけにする）
               </button>
             )}
-            {(item.shelf === 'kotoba' || item.source) && (
+            {(currentShelf?.style === 'cards' || item.source) && (
               <div className="source-field">
                 <h3 className="source-title">誰の言葉・どこで見たか</h3>
                 <input

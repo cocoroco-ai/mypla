@@ -166,7 +166,7 @@ export type ItemSummary = {
   createdAt: string;
   imagePath: string | null;
   imageCount: number;
-  shelf: ShelfId | null; // 置いてある棚（null = ライブラリーだけ）
+  shelfId: string | null; // 置いてある棚（null = ライブラリーだけ）
   source: string; // 誰の言葉・どこで見たか
 };
 
@@ -174,14 +174,50 @@ export type ItemSummary = {
 // 棚（ライブラリーの記事を、特に分けたいときに置く場所。ライブラリーにも出たまま）
 // ---------------------------------------------------------------------
 
-export type ShelfId = 'kotoba' | 'ai' | 'learn' | 'idea';
-export const SHELVES: { id: ShelfId; name: string; icon: string; note: string }[] = [
-  { id: 'kotoba', name: 'ことばの宝箱', icon: '💎', note: '心に残った言葉' },
-  { id: 'ai', name: 'AI図鑑', icon: '🤖', note: '各AIの特徴と自分のメモ' },
-  { id: 'learn', name: '学びノート', icon: '📘', note: '学んだことのまとめ' },
-  { id: 'idea', name: 'アイデア帳', icon: '💡', note: 'ひらめきの置き場所' },
-];
-export const shelfOf = (id: ShelfId | null) => SHELVES.find((s) => s.id === id) ?? null;
+/** 棚。名前・アイコン・見た目（一覧 / 言葉のカード）は、自分で決められる */
+export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards'; sortOrder: number };
+export const SHELF_MAX = 20;
+
+/** 自分の棚を並び順で取る（初めてのときは、最初の4つの棚を作る） */
+export async function listShelves(): Promise<Shelf[]> {
+  await supabase.rpc('ensure_default_shelves');
+  const { data, error } = await supabase
+    .from('shelves')
+    .select('id, name, icon, style, sort_order')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(toJapaneseError(error.message));
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    icon: r.icon as string,
+    style: r.style as Shelf['style'],
+    sortOrder: r.sort_order as number,
+  }));
+}
+
+export async function createShelf(input: { name: string; icon: string; style: Shelf['style'] }, sortOrder: number): Promise<void> {
+  const { error } = await supabase
+    .from('shelves')
+    .insert({ name: input.name.trim(), icon: input.icon.trim() || '📁', style: input.style, sort_order: sortOrder });
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+export async function updateShelf(id: string, patch: { name?: string; icon?: string; style?: Shelf['style']; sortOrder?: number }): Promise<void> {
+  const values: Record<string, string | number> = {};
+  if (patch.name !== undefined) values.name = patch.name.trim();
+  if (patch.icon !== undefined) values.icon = patch.icon.trim() || '📁';
+  if (patch.style !== undefined) values.style = patch.style;
+  if (patch.sortOrder !== undefined) values.sort_order = patch.sortOrder;
+  const { error } = await supabase.from('shelves').update(values).eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** 棚を削除する（中の記事は消えずに、ライブラリーだけに戻る） */
+export async function deleteShelf(id: string): Promise<void> {
+  const { error } = await supabase.from('shelves').delete().eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
 
 export type ItemDetail = ItemSummary & {
   imagePaths: string[]; // すべての画像（並び順）
@@ -202,7 +238,7 @@ type Row = {
   created_at: string;
   updated_at: string;
   item_images: { id: string; storage_path: string; position: number }[] | null;
-  shelf: ShelfId | null;
+  shelf_id: string | null;
   source: string;
 };
 
@@ -221,12 +257,12 @@ function toSummary(row: Row): ItemSummary {
     createdAt: row.created_at,
     imagePath: firstImage(row),
     imageCount: row.item_images?.length ?? 0,
-    shelf: row.shelf ?? null,
+    shelfId: row.shelf_id ?? null,
     source: row.source ?? '',
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf, source';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -234,7 +270,7 @@ export async function listItems(
   limit: number,
   query = '',
   onlyUnsorted = false,
-  shelf: ShelfId | null = null,
+  shelfId: string | null = null,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -242,7 +278,7 @@ export async function listItems(
     .is('deleted_at', null);
   // 整理待ち：文字を読まずに画像だけで保存したもの
   if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null);
-  if (shelf) request = request.eq('shelf', shelf);
+  if (shelfId) request = request.eq('shelf_id', shelfId);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -327,7 +363,7 @@ export type ItemPatch = {
   text?: { value: string; ocrText: string };
   memo?: string;
   source?: string;
-  shelf?: ShelfId | null;
+  shelfId?: string | null;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -360,7 +396,7 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   if (patch.text !== undefined) values.edited_text = patch.text.value === patch.text.ocrText ? null : patch.text.value;
   if (patch.memo !== undefined) values.memo = patch.memo.trim();
   if (patch.source !== undefined) values.source = patch.source.trim();
-  if (patch.shelf !== undefined) values.shelf = patch.shelf;
+  if (patch.shelfId !== undefined) values.shelf_id = patch.shelfId;
   const { error } = await supabase.from('items').update(values).eq('id', id);
   if (error) throw new Error(toJapaneseError(error.message));
 }
@@ -463,29 +499,31 @@ export async function deleteImage(imageId: string, path: string): Promise<void> 
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
-/** 棚ごとの件数 */
-export async function countByShelf(): Promise<Record<ShelfId, number>> {
-  const result = { kotoba: 0, ai: 0, learn: 0, idea: 0 } as Record<ShelfId, number>;
+/** 棚ごとの件数（棚の id → 件数） */
+export async function countByShelf(shelves: Shelf[]): Promise<Record<string, number>> {
+  const result: Record<string, number> = {};
   await Promise.all(
-    SHELVES.map(async (s) => {
+    shelves.map(async (sh) => {
       const { count } = await supabase
         .from('items')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
-        .eq('shelf', s.id);
-      result[s.id] = count ?? 0;
+        .eq('shelf_id', sh.id);
+      result[sh.id] = count ?? 0;
     }),
   );
   return result;
 }
 
-/** 今日のことば：ことばの宝箱から、日替わりで1つ（同じ日は同じもの）。無ければ null */
-export async function pickTodayWord(): Promise<ItemSummary | null> {
+/** 今日のことば：「言葉のカード」の見た目の棚から、日替わりで1つ（同じ日は同じもの）。無ければ null */
+export async function pickTodayWord(shelves: Shelf[]): Promise<ItemSummary | null> {
+  const ids = shelves.filter((s) => s.style === 'cards').map((s) => s.id);
+  if (ids.length === 0) return null;
   const { count, error } = await supabase
     .from('items')
     .select('id', { count: 'exact', head: true })
     .is('deleted_at', null)
-    .eq('shelf', 'kotoba');
+    .in('shelf_id', ids);
   if (error || !count) return null;
   const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / DAY_MS);
   const offset = (today * 7) % count; // 読み返しのお知らせと重なりにくいよう、進み方を変える
@@ -493,7 +531,7 @@ export async function pickTodayWord(): Promise<ItemSummary | null> {
     .from('items')
     .select(COLUMNS)
     .is('deleted_at', null)
-    .eq('shelf', 'kotoba')
+    .in('shelf_id', ids)
     .order('created_at', { ascending: true })
     .range(offset, offset);
   const row = (data as Row[] | null)?.[0];

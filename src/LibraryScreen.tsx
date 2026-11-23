@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, shelfOf, type ItemSummary, type ShelfId } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, listShelves, type ItemSummary, type Shelf } from './library';
 
 const PAGE = 20;
 
@@ -9,13 +9,21 @@ type Props = {
   onOpen: (id: string) => void;
   onImport: () => void;
   onTrash: () => void;
-  shelf?: ShelfId; // 棚を開いたとき（その棚の記事だけを並べる）
+  shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
 export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf }: Props) {
-  const shelfInfo = shelf ? shelfOf(shelf) : null;
-  const isWords = shelf === 'kotoba';
+  const shelfInfo = shelf ?? null;
+  const isWords = shelf?.style === 'cards';
+  // ライブラリーで、記事に棚の印を付けるため
+  const [shelfMap, setShelfMap] = useState<Record<string, Shelf>>({});
+  useEffect(() => {
+    if (shelf) return;
+    listShelves()
+      .then((list) => setShelfMap(Object.fromEntries(list.map((x) => [x.id, x]))))
+      .catch(() => setShelfMap({}));
+  }, [shelf]);
   const [items, setItems] = useState<ItemSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -76,7 +84,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted, shelf ?? null);
+      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null);
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -182,7 +190,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
       {shelfInfo && (
         <p className="hint">
-          {shelfInfo.note}。ライブラリーの記事を開いて「棚に移す」で、ここに集められます（ライブラリーにも残ります）。
+          ライブラリーの記事を開いて「棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
       )}
 
@@ -329,9 +337,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 <span className="item-meta">
                   {formatDate(item.createdAt)}
                   {item.edited && <span className="state-badge is-edited">手直しあり</span>}
-                  {!shelf && item.shelf && (
+                  {!shelf && item.shelfId && shelfMap[item.shelfId] && (
                     <span className="shelf-badge">
-                      {shelfOf(item.shelf)?.icon} {shelfOf(item.shelf)?.name}
+                      {shelfMap[item.shelfId].icon} {shelfMap[item.shelfId].name}
                     </span>
                   )}
                 </span>
