@@ -190,6 +190,10 @@ button:disabled { opacity: 0.5; cursor: default; }
 .region-box.is-selecting { touch-action: none; cursor: crosshair; outline: 2px solid var(--mint-strong); }
 .region-img { display: block; max-width: 100%; max-height: 60vh; width: auto; height: auto; pointer-events: none; }
 .region-box.is-selecting .region-img { max-height: 75vh; }
+/* 囲むときは、上のバーと下のボタンに隠れないよう、画像全体が画面に収まる大きさにする */
+@supports (height: 100dvh) {
+  .region-box.is-selecting .region-img { max-height: calc(100dvh - 240px); }
+}
 .region-rect {
   position: absolute; border: 2px solid var(--blue); border-radius: 4px;
   background: rgba(58, 120, 160, 0.14);

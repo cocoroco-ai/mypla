@@ -228,6 +228,28 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
 
   const busy = progress !== null || saving;
 
+  // 「範囲を指で囲む」にしたら、画像全体が見える位置までスクロールする（途中でスクロールしなくて済むように）
+  useEffect(() => {
+    if (!selecting) return;
+    const t = setTimeout(() => {
+      const box = document.querySelector('.region-box');
+      if (!box) return;
+      const top = box.getBoundingClientRect().top + window.scrollY - 64;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [selecting]);
+
+  /** 分かれてしまった範囲を、全部を囲む1つの範囲にまとめる */
+  function joinRegions() {
+    if (regions.length < 2) return;
+    const x1 = Math.min(...regions.map((r) => r.x));
+    const y1 = Math.min(...regions.map((r) => r.y));
+    const x2 = Math.max(...regions.map((r) => r.x + r.w));
+    const y2 = Math.max(...regions.map((r) => r.y + r.h));
+    setRegions([{ x: x1, y: y1, w: x2 - x1, h: y2 - y1 }]);
+  }
+
   if (bulkResult) {
     return (
       <section>
@@ -347,7 +369,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
 
           {selecting && (
             <p className="hint">
-              読み取りたい文章を、指でなぞって四角で囲んでください。何か所でも囲めます（上から順につなげます）。間違えて囲んだ四角は、左上の「×」で消せます。
+              読み取りたい文章を、指でなぞって四角で囲んでください。何か所でも囲めます（上から順につなげます）。間違えて囲んだ四角は、左上の「×」で消せます。分かれてしまったときは「1つにつなげる」で1つにできます（そのままでも、上から順につなげて読みます）。
             </p>
           )}
 
@@ -362,6 +384,11 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
           {selecting && regions.length > 0 && (
             <div className="region-actions">
               <span className="meta">{regions.length}か所を囲んでいます</span>
+              {regions.length >= 2 && (
+                <button className="btn-small" onClick={joinRegions} disabled={busy}>
+                  1つにつなげる
+                </button>
+              )}
               <button className="btn-small" onClick={() => setRegions((l) => l.slice(0, -1))} disabled={busy}>
                 1つ取り消す
               </button>
