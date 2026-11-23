@@ -401,15 +401,20 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
                 caption={`${viewExtra + 2}枚目`}
                 onClose={() => setViewExtra(null)}
                 actions={
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      removeExtra(viewExtra);
-                      setViewExtra(null);
-                    }}
-                  >
-                    この画像は外す
-                  </button>
+                  <>
+                    <button className="btn-primary" onClick={() => setViewExtra(null)}>
+                      このまま使う（戻る）
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        removeExtra(viewExtra);
+                        setViewExtra(null);
+                      }}
+                    >
+                      この画像は外す
+                    </button>
+                  </>
                 }
               />
             )}
@@ -511,7 +516,9 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
                 ? regions.length
                   ? `囲んだ${regions.length}か所を読み取る`
                   : '読み取る範囲を囲んでください'
-                : '文字を読み取る'}
+                : allFiles.length > 1
+                  ? `${allFiles.length}枚の文字を読み取る`
+                  : '文字を読み取る'}
             </button>
           )}
           {!result && (

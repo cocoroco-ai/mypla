@@ -158,7 +158,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
             actions={
               <>
                 <button className="btn-secondary" onClick={() => unpick(viewing)}>これは外す</button>
-                <button className="btn-secondary" onClick={() => setViewing(null)}>このまま</button>
+                <button className="btn-primary" onClick={() => setViewing(null)}>このまま（戻る）</button>
               </>
             }
           />
@@ -316,15 +316,18 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
           caption={viewing.title}
           onClose={() => setViewing(null)}
           actions={
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                togglePick(viewing);
-                setViewing(null);
-              }}
-            >
-              {picked.some((x) => x.id === viewing.id) ? '選ぶのをやめる' : 'これを選ぶ'}
-            </button>
+            <>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  togglePick(viewing);
+                  setViewing(null);
+                }}
+              >
+                {picked.some((x) => x.id === viewing.id) ? '選ぶのをやめる' : 'これを選ぶ'}
+              </button>
+              <button className="btn-secondary" onClick={() => setViewing(null)}>戻る</button>
+            </>
           }
         />
       )}

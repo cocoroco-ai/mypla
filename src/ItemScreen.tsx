@@ -407,8 +407,15 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                       <button className="btn-secondary" onClick={() => removeImage(viewIndex, 'split')} disabled={imageBusy}>
                         この画像を外す
                       </button>
+                      <button className="btn-primary" onClick={() => setViewIndex(null)}>
+                        戻る
+                      </button>
                     </>
-                  ) : undefined
+                  ) : (
+                    <button className="btn-primary" onClick={() => setViewIndex(null)}>
+                      戻る
+                    </button>
+                  )
                 }
               />
             )}

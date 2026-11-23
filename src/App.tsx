@@ -101,7 +101,8 @@ export default function App() {
       ? 'お試し利用を終了しますか？\n終了すると、保存した内容にはもう戻れません（必要なら先に「データの書き出し」をしてください）。'
       : 'ログアウトしますか？';
     if (!window.confirm(message)) return;
-    await supabase.auth.signOut();
+    // この端末だけログアウトする（iPhone でログアウトしても、パソコンはログインしたまま）
+    await supabase.auth.signOut({ scope: 'local' });
     setScreen({ name: 'home' });
   }
 
