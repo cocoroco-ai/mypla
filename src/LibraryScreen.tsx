@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, searchWords, type ItemSummary } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, type ItemSummary } from './library';
 
 const PAGE = 20;
 
@@ -31,6 +31,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   // まとめる前の確認画面（画像を大きく見て、関係ないものを外せる）
   const [reviewing, setReviewing] = useState(false);
   const [viewing, setViewing] = useState<ItemSummary | null>(null);
+  const [mergeTitle, setMergeTitle] = useState('');
 
   function togglePick(item: ItemSummary) {
     setPicked((list) => (list.some((x) => x.id === item.id) ? list.filter((x) => x.id !== item.id) : [...list, item]));
@@ -56,7 +57,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
     setMergeBusy(true);
     setError('');
     try {
-      const id = await mergeItems(picked);
+      const id = await mergeItems(picked, mergeTitle);
       stopMerging();
       onOpen(id);
     } catch (e) {
@@ -138,6 +139,17 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
             </li>
           ))}
         </ul>
+        <label className="field merge-title">
+          <span className="field-label">まとめた記事のタイトル（あとからでも直せます）</span>
+          <input
+            className="title-input"
+            value={mergeTitle}
+            maxLength={100}
+            onChange={(e) => setMergeTitle(e.target.value)}
+            placeholder={`空のままなら「${mergedTitle(picked)}」`}
+            enterKeyHint="done"
+          />
+        </label>
         {viewing && viewing.imagePath && urls[viewing.imagePath] && (
           <ImageViewer
             src={urls[viewing.imagePath]}
@@ -326,7 +338,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
           <>
             <button
               className="btn-primary btn-large"
-              onClick={() => { setReviewing(true); window.scrollTo({ top: 0 }); }}
+              onClick={() => {
+                const t = mergedTitle(picked);
+                setMergeTitle(t.startsWith('画像のみ（') ? '' : t);
+                setReviewing(true);
+                window.scrollTo({ top: 0 });
+              }}
               disabled={picked.length < 2}
             >
               {picked.length < 2 ? '2件以上選んでください' : `選んだ${picked.length}件を確認してまとめる`}

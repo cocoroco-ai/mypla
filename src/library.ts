@@ -410,9 +410,14 @@ export async function deleteForever(ids: string[]): Promise<void> {
  * 選んだ記事を1つにまとめる。古い順に、画像・文章・メモをつなげて一番古い記事に入れ、残りは消す。
  * タイトルは、自動で付けた「画像のみ（…）」でないものがあれば、古い順で最初のものを使う。戻り値：まとめた記事の id
  */
-export async function mergeItems(items: ItemSummary[]): Promise<string> {
+export function mergedTitle(items: ItemSummary[]): string {
   const ordered = [...items].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const title = ordered.find((i) => !i.title.startsWith('画像のみ（'))?.title ?? ordered[0].title;
+  return ordered.find((i) => !i.title.startsWith('画像のみ（'))?.title ?? ordered[0]?.title ?? '';
+}
+
+export async function mergeItems(items: ItemSummary[], newTitle?: string): Promise<string> {
+  const ordered = [...items].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const title = newTitle?.trim() || mergedTitle(items);
   const { data, error } = await supabase.rpc('merge_items', { ids: ordered.map((i) => i.id), new_title: title });
   if (error) throw new Error(toJapaneseError(error.message));
   return data as string;

@@ -489,3 +489,12 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 button.item-image-link { padding: 0; border: 0; background: none; width: 100%; cursor: zoom-in; margin-bottom: 6px; }
 .image-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .extra-zoom { padding: 0; border: 0; background: none; display: block; cursor: zoom-in; }
+
+/* タイトルをその場で直す */
+.title-row { display: flex; align-items: flex-start; gap: 8px; }
+.title-row .screen-title { flex: 1; min-width: 0; }
+.title-row .btn-small { margin-top: 10px; flex: 0 0 auto; }
+.title-edit { display: grid; gap: 8px; margin: 8px 0 12px; }
+.title-edit-actions { display: flex; gap: 8px; }
+.btn-small.is-primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+.merge-title { margin-bottom: 16px; }

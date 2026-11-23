@@ -18,6 +18,10 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
   const [viewIndex, setViewIndex] = useState<number | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  // タイトルだけをその場で直す
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [titleSaving, setTitleSaving] = useState(false);
   const [showOcr, setShowOcr] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -115,6 +119,20 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
       setError(`うまくいきませんでした。${e instanceof Error ? e.message : ''}`);
     } finally {
       setImageBusy(false);
+    }
+  }
+
+  async function saveTitle() {
+    setError('');
+    setTitleSaving(true);
+    try {
+      await updateItem(id, { title: titleDraft });
+      await reload();
+      setTitleEditing(false);
+    } catch (e) {
+      setError(`タイトルを保存できませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setTitleSaving(false);
     }
   }
 
@@ -252,7 +270,46 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
       {item && !editing && (
         <>
-          <h1 className="screen-title">{item.title}</h1>
+          {titleEditing ? (
+            <form
+              className="title-edit"
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveTitle();
+              }}
+            >
+              <input
+                className="title-input"
+                value={titleDraft}
+                maxLength={100}
+                autoFocus
+                onChange={(e) => setTitleDraft(e.target.value)}
+                aria-label="タイトル"
+                enterKeyHint="done"
+              />
+              <div className="title-edit-actions">
+                <button type="submit" className="btn-small is-primary" disabled={titleSaving}>
+                  {titleSaving ? '保存しています…' : '保存'}
+                </button>
+                <button type="button" className="btn-small" onClick={() => setTitleEditing(false)} disabled={titleSaving}>
+                  やめる
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="title-row">
+              <h1 className="screen-title">{item.title}</h1>
+              <button
+                className="btn-small"
+                onClick={() => {
+                  setTitleDraft(item.title.startsWith('画像のみ（') ? '' : item.title);
+                  setTitleEditing(true);
+                }}
+              >
+                ✎ タイトル
+              </button>
+            </div>
+          )}
           <p className="meta">
             {formatDate(item.createdAt)} に保存
             {item.updatedAt !== item.createdAt && formatDate(item.updatedAt) !== formatDate(item.createdAt) && (
