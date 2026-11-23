@@ -301,7 +301,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         </ul>
       )}
 
-      <ul className="item-list" hidden={isWords && !merging}>
+      {!(isWords && !merging) && (
+      <ul className="item-list">
         {items.map((item) => (
           <li key={item.id}>
             <button
@@ -350,6 +351,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           </li>
         ))}
       </ul>
+      )}
 
       {loading && <p className="hint center">{searching ? '探しています…' : '読み込んでいます…'}</p>}
 
