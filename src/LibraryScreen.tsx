@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, listShelves, type ItemSummary, type Shelf } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, type ItemSummary, type Shelf } from './library';
 
 const PAGE = 20;
 
@@ -17,6 +17,28 @@ type Props = {
 export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter }: Props) {
   const shelfInfo = shelf ?? null;
   const isWords = shelf?.style === 'cards';
+  const isPhotos = shelf?.style === 'photos';
+  // 写真の棚：棚から直接、写真を入れる（文字は読まない）
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
+  const [photoNotice, setPhotoNotice] = useState('');
+  async function addPhotos(list: FileList | null) {
+    if (!shelf) return;
+    const files = [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setError('');
+    setPhotoNotice('');
+    try {
+      const r = await savePhotos(files, shelf.id, (done, total) => setPhotoProgress({ done, total }));
+      if (r.stoppedReason) setError(`${r.saved}枚まで入れたところで止まりました。${r.stoppedReason}`);
+      else setPhotoNotice(`${r.saved}枚の写真を入れました。`);
+    } finally {
+      setPhotoProgress(null);
+      setInput('');
+      setQuery('');
+      load(0, '');
+    }
+  }
   // ライブラリーで、記事に棚の印を付けるため
   const [shelfMap, setShelfMap] = useState<Record<string, Shelf>>({});
   useEffect(() => {
@@ -191,11 +213,17 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
       <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
-      {shelfInfo && (
+      {shelfInfo && !isPhotos && (
         <p className="hint">
           ライブラリーの記事を開いて「棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
       )}
+      {isPhotos && (
+        <p className="hint">
+          下の「＋ 写真を入れる」で、何枚でもまとめて入れられます（文字は読みません。ライブラリーにも並びます）。
+        </p>
+      )}
+      {photoNotice && <p className="notice" role="status">{photoNotice}</p>}
 
       <form
         className="search"
@@ -277,7 +305,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
             </>
           ) : (
             <>
-              {shelfInfo ? (
+              {isPhotos ? (
+                <>
+                  <p>まだ写真がありません。</p>
+                  <p className="hint">下の「＋ 写真を入れる」を押して、写真を選んでください。</p>
+                </>
+              ) : shelfInfo ? (
                 <>
                   <p>まだ「{shelfInfo.name}」に記事がありません。</p>
                   <p className="hint">ライブラリーで記事を開き、「棚に移す」から「{shelfInfo.name}」を選ぶと、ここに並びます。</p>
@@ -310,7 +343,25 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         </ul>
       )}
 
-      {!(isWords && !merging) && (
+      {isPhotos && !merging && (
+        <ul className="photo-grid">
+          {items.map((item) => (
+            <li key={item.id}>
+              <button className="photo-cell" onClick={() => onOpen(item.id)} aria-label={`${item.title} を開く`}>
+                {item.imagePath && urls[item.imagePath] ? (
+                  <img src={urls[item.imagePath]} alt="" loading="lazy" />
+                ) : (
+                  <span className="thumb-empty" aria-hidden="true">{item.isNote ? '✎' : '🖼️'}</span>
+                )}
+                {item.favorite && <span className="photo-fav" aria-hidden="true">★</span>}
+                {item.imageCount > 1 && <span className="photo-count" aria-hidden="true">{item.imageCount}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!(isWords && !merging) && !(isPhotos && !merging) && (
       <ul className="item-list">
         {items.map((item) => (
           <li key={item.id}>
@@ -399,6 +450,16 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         ゴミ箱{trashCount > 0 ? `（${trashCount}件）` : ''}を見る
       </button>
 
+      {isPhotos && (
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => { addPhotos(e.target.files); e.target.value = ''; }}
+        />
+      )}
       <div className="bottom-action">
         {merging ? (
           <>
@@ -416,6 +477,10 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
             </button>
             <button className="btn-text" onClick={stopMerging} disabled={mergeBusy}>やめる</button>
           </>
+        ) : isPhotos ? (
+          <button className="btn-primary btn-large" onClick={() => photoRef.current?.click()} disabled={photoProgress !== null}>
+            {photoProgress ? `入れています…（${photoProgress.done} / ${photoProgress.total}枚）` : '＋ 写真を入れる'}
+          </button>
         ) : (
           <button className="btn-primary btn-large" onClick={onImport}>
             ＋ スクショを取り込む

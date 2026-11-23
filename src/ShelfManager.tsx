@@ -159,9 +159,12 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
               <button type="button" className={style === 'cards' ? 'is-on' : ''} onClick={() => setStyle('cards')}>
                 言葉のカード
               </button>
+              <button type="button" className={style === 'photos' ? 'is-on' : ''} onClick={() => setStyle('photos')}>
+                写真
+              </button>
             </div>
             <p className="hint">
-              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。
+              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「写真」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。
             </p>
           </div>
           <div className="button-row">
@@ -184,6 +187,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
               <span className="shelf-row-name">
                 {sh.icon} {sh.name}
                 {sh.style === 'cards' && <span className="shelf-row-style">カード</span>}
+                {sh.style === 'photos' && <span className="shelf-row-style">写真</span>}
               </span>
               <span className="shelf-row-actions">
                 <button className="btn-small" onClick={() => move(i, -1)} disabled={busy || i === 0} aria-label="上へ">

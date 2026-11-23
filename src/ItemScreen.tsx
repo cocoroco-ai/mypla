@@ -446,7 +446,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             </div>
           )}
 
-          {imageOnly && (
+          {imageOnly && !item.isPhoto && (
             <div className="card image-only">
               <p className="hint">まだ文字にしていない記事です。文字にすると、検索やコピーができるようになります。</p>
               {reading ? (

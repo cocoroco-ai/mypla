@@ -197,7 +197,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     let found = shelves.find((x) => x.name === info.name);
     if (!found) {
       await createShelf(
-        { name: info.name, icon: info.icon, style: info.style === 'cards' ? 'cards' : 'list' },
+        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' ? info.style : 'list' },
         shelves.reduce((m, x) => Math.max(m, x.sortOrder), 0) + 1,
       );
       const fresh: Shelf[] = await listShelves();

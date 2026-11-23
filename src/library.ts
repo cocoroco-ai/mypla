@@ -12,6 +12,7 @@ export type SaveInput = {
   confidence: number | null; // 文字を読まずに画像だけ保存したときは null
   files: File[]; // 1枚目から順に（続きのスクショをまとめて1件にできる）
   regions: Region[] | null; // 1枚目を範囲を囲んで読んだときだけ。全体を読んだときは null
+  photoShelfId?: string; // 写真の棚から入れるとき（種類を「写真」にして、その棚に置く）
 };
 
 type PreparedImage = { blob: Blob; mime: string; ext: string; width: number; height: number };
@@ -127,6 +128,7 @@ export async function saveItem(input: SaveInput): Promise<string> {
       edited_text: input.text !== input.ocrText ? input.text : null,
       ocr_engine: input.confidence === null ? null : 'tesseract.js',
       ocr_confidence: input.confidence === null ? null : Math.round(input.confidence),
+      ...(input.photoShelfId ? { source_type: 'photo', shelf_id: input.photoShelfId } : {}),
     })
     .select('id')
     .single();
@@ -170,6 +172,7 @@ export type ItemSummary = {
   source: string; // 誰の言葉・どこで見たか
   url: string; // リンク（空 = なし）
   isNote: boolean; // 自分で書いたノート（スクショではない）
+  isPhoto: boolean; // 写真の棚から入れた写真（文字にする前提ではないので、整理待ちに数えない）
   favorite: boolean; // ★お気に入り
 };
 
@@ -178,7 +181,7 @@ export type ItemSummary = {
 // ---------------------------------------------------------------------
 
 /** 棚。名前・アイコン・見た目（一覧 / 言葉のカード）は、自分で決められる */
-export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards'; sortOrder: number };
+export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos'; sortOrder: number };
 export const SHELF_MAX = 20;
 
 /** 自分の棚を並び順で取る（初めてのときは、最初の4つの棚を作る） */
@@ -267,6 +270,7 @@ function toSummary(row: Row): ItemSummary {
     source: row.source ?? '',
     url: row.url ?? '',
     isNote: row.source_type === 'note',
+    isPhoto: row.source_type === 'photo',
     favorite: row.favorite ?? false,
   };
 }
@@ -287,7 +291,7 @@ export async function listItems(
     .select(COLUMNS, { count: 'exact' })
     .is('deleted_at', null);
   // 整理待ち：文字を読まずに画像だけで保存したもの
-  if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null);
+  if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null).neq('source_type', 'photo');
   if (shelfId) request = request.eq('shelf_id', shelfId);
   if (onlyFavorite) request = request.eq('favorite', true);
 
@@ -676,7 +680,8 @@ export async function countUnsorted(): Promise<number> {
     .select('id', { count: 'exact', head: true })
     .is('deleted_at', null)
     .eq('ocr_text', '')
-    .is('edited_text', null);
+    .is('edited_text', null)
+    .neq('source_type', 'photo');
   if (error) throw new Error(toJapaneseError(error.message));
   return count ?? 0;
 }
@@ -697,6 +702,32 @@ export async function saveImagesOnly(
     const title = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
     try {
       await saveItem({ title, ocrText: '', text: '', confidence: null, files: [file], regions: null });
+      saved++;
+      onProgress(saved, files.length);
+    } catch (e) {
+      return { saved, stoppedReason: e instanceof Error ? e.message : '保存できませんでした' };
+    }
+  }
+  return { saved, stoppedReason: null };
+}
+
+/**
+ * 写真の棚から、写真を何枚か入れる（文字は読まない。1枚ずつ別の記事として、その棚に置く）。
+ * 上限などで途中から保存できなくなったら、そこで止めて理由を返す
+ */
+export async function savePhotos(
+  files: File[],
+  shelfId: string,
+  onProgress: (done: number, total: number) => void,
+): Promise<{ saved: number; stoppedReason: string | null }> {
+  let saved = 0;
+  onProgress(0, files.length);
+  for (const file of files) {
+    const d = file.lastModified ? new Date(file.lastModified) : new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const title = `写真（${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
+    try {
+      await saveItem({ title, ocrText: '', text: '', confidence: null, files: [file], regions: null, photoShelfId: shelfId });
       saved++;
       onProgress(saved, files.length);
     } catch (e) {

@@ -511,6 +511,12 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .tile.shelf-kotoba { background: linear-gradient(135deg, #fffaf0, #fff1d6); border-color: #f0d9a8; }
 
 /* ことばの宝箱：言葉を大きく見せるカード */
+.photo-grid { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.photo-cell { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; border: 0; border-radius: 4px; overflow: hidden; background: var(--line); cursor: pointer; }
+.photo-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-cell .thumb-empty { display: grid; place-items: center; width: 100%; height: 100%; font-size: 24px; }
+.photo-fav { position: absolute; top: 4px; left: 6px; color: #f5b301; font-size: 16px; text-shadow: 0 0 3px rgba(0, 0, 0, 0.5); }
+.photo-count { position: absolute; top: 4px; right: 4px; min-width: 20px; padding: 0 5px; border-radius: 10px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
 .word-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
 .word-card {
   width: 100%; display: grid; gap: 8px; padding: 18px 18px 12px; text-align: left; font: inherit; color: inherit;
