@@ -16,6 +16,11 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
   const addRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
   const [viewIndex, setViewIndex] = useState<number | null>(null);
+  // 開いたときは「見る画面」（画像が先）。直すときだけ「✎ 編集する」で今までの画面にする
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  useEffect(() => {
+    setMode('view');
+  }, [id]);
   const [imageBusy, setImageBusy] = useState(false);
   const [notice, setNotice] = useState('');
   // タイトルだけをその場で直す
@@ -336,8 +341,117 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
       {notice && <p className="notice" role="status">{notice}</p>}
       {!item && !error && <p className="hint center">読み込んでいます…</p>}
 
-      {item && !editing && (
+      {item && !editing && mode === 'view' && (
+        <div className="item-view">
+          <div className="title-row">
+            <h1 className="screen-title">{item.title}</h1>
+            <button
+              className="btn-small is-primary"
+              onClick={() => {
+                setMode('edit');
+                setNotice('');
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              ✎ 編集する
+            </button>
+          </div>
+          <p className="meta">
+            {formatDate(item.createdAt)} に保存
+            {currentShelf && (
+              <span className="shelf-badge">
+                {currentShelf.icon} {currentShelf.name}
+              </span>
+            )}
+          </p>
+
+          {imageUrlList.length > 0 && (
+            <div className="view-images">
+              {imageUrlList.map((url, i) => (
+                <button key={url} className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>
+                  {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
+                  <img className="item-image" src={url} alt={`保存した画像（${i + 1}枚目）`} />
+                </button>
+              ))}
+              <p className="hint">画像を押すと、大きく表示できます（指で広げて拡大もできます）。</p>
+            </div>
+          )}
+
+          {imageOnly && (
+            <div className="card image-only">
+              <p className="hint">まだ文字にしていない記事です。文字にすると、検索やコピーができるようになります。</p>
+              {reading ? (
+                <>
+                  <p className="progress-label">{reading.label}…</p>
+                  <div className="progress"><div style={{ width: `${Math.round(reading.ratio * 100)}%` }} /></div>
+                </>
+              ) : (
+                <button className="btn-primary" onClick={readImageText} disabled={!imageUrl}>
+                  画像の文字を読み取る
+                </button>
+              )}
+            </div>
+          )}
+
+          {!imageOnly && item.body && (
+            <div className="card">
+              <div className="item-text">{item.body}</div>
+              {item.source && <p className="item-source">— {item.source}</p>}
+              <div className="button-row">
+                <button className="btn-secondary" onClick={copy}>
+                  {copied ? 'コピーしました' : '文章をコピー'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(item.url || item.memo) && (
+            <div className="card view-extra">
+              {item.url && (
+                <a className="item-link" href={item.url} target="_blank" rel="noopener noreferrer">
+                  🔗 {linkLabel(item.url)}
+                </a>
+              )}
+              {item.memo && <p className="view-memo">💬 {item.memo}</p>}
+            </div>
+          )}
+
+          {viewIndex !== null && imageUrlList[viewIndex] && (
+            <ImageViewer
+              src={imageUrlList[viewIndex]}
+              caption={imageUrlList.length > 1 ? `${viewIndex + 1} / ${imageUrlList.length}枚目` : item.title}
+              onClose={() => setViewIndex(null)}
+              actions={
+                <>
+                  {imageUrlList.length > 1 && (
+                    <>
+                      <button className="btn-secondary" onClick={() => setViewIndex(Math.max(0, viewIndex - 1))} disabled={viewIndex === 0}>
+                        ← 前
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setViewIndex(Math.min(imageUrlList.length - 1, viewIndex + 1))}
+                        disabled={viewIndex === imageUrlList.length - 1}
+                      >
+                        次 →
+                      </button>
+                    </>
+                  )}
+                  <button className="btn-primary" onClick={() => setViewIndex(null)}>
+                    戻る
+                  </button>
+                </>
+              }
+            />
+          )}
+        </div>
+      )}
+
+      {item && !editing && mode === 'edit' && (
         <>
+          <button className="btn-small view-back" onClick={() => { setMode('view'); window.scrollTo({ top: 0 }); }}>
+            ← 見る画面に戻る
+          </button>
           {titleEditing ? (
             <form
               className="title-edit"
