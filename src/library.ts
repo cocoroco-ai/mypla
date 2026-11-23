@@ -168,6 +168,8 @@ export type ItemSummary = {
   imageCount: number;
   shelfId: string | null; // 置いてある棚（null = ライブラリーだけ）
   source: string; // 誰の言葉・どこで見たか
+  url: string; // リンク（空 = なし）
+  isNote: boolean; // 自分で書いたノート（スクショではない）
 };
 
 // ---------------------------------------------------------------------
@@ -240,6 +242,8 @@ type Row = {
   item_images: { id: string; storage_path: string; position: number }[] | null;
   shelf_id: string | null;
   source: string;
+  url: string;
+  source_type: string;
 };
 
 function firstImage(row: Row): string | null {
@@ -259,10 +263,12 @@ function toSummary(row: Row): ItemSummary {
     imageCount: row.item_images?.length ?? 0,
     shelfId: row.shelf_id ?? null,
     source: row.source ?? '',
+    url: row.url ?? '',
+    isNote: row.source_type === 'note',
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -284,7 +290,7 @@ export async function listItems(
   for (const word of searchWords(query)) {
     const pattern = quoteForFilter(`%${escapeLike(word)}%`);
     request = request.or(
-      ['title', 'ocr_text', 'edited_text', 'memo', 'source'].map((col) => `${col}.ilike.${pattern}`).join(','),
+      ['title', 'ocr_text', 'edited_text', 'memo', 'source', 'url'].map((col) => `${col}.ilike.${pattern}`).join(','),
     );
   }
 
@@ -364,6 +370,9 @@ export type ItemPatch = {
   memo?: string;
   source?: string;
   shelfId?: string | null;
+  url?: string;
+  /** ノートの文章（ノートは「読み取った文章」と「手直し」を分けないので、そのまま置き換える） */
+  noteText?: string;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -397,6 +406,11 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   if (patch.memo !== undefined) values.memo = patch.memo.trim();
   if (patch.source !== undefined) values.source = patch.source.trim();
   if (patch.shelfId !== undefined) values.shelf_id = patch.shelfId;
+  if (patch.url !== undefined) values.url = normalizeUrl(patch.url);
+  if (patch.noteText !== undefined) {
+    values.ocr_text = patch.noteText;
+    values.edited_text = null;
+  }
   const { error } = await supabase.from('items').update(values).eq('id', id);
   if (error) throw new Error(toJapaneseError(error.message));
 }
@@ -536,6 +550,33 @@ export async function pickTodayWord(shelves: Shelf[]): Promise<ItemSummary | nul
     .range(offset, offset);
   const row = (data as Row[] | null)?.[0];
   return row ? toSummary(row) : null;
+}
+
+/** リンクを整える：空ならそのまま、「example.com」のように始まりが無ければ https:// を付ける */
+export function normalizeUrl(input: string): string {
+  const t = input.trim();
+  if (!t) return '';
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/^[\w-]+(\.[\w-]+)+/.test(t)) return `https://${t}`;
+  throw new Error('リンクは「https://」で始まる住所を入れてください。');
+}
+
+/** ノート（文字だけの記事）を保存する。戻り値：記事の id */
+export async function saveNote(input: { title: string; text: string; url: string }): Promise<string> {
+  const text = input.text.trim();
+  if (!text && !input.title.trim()) throw new Error('タイトルか本文を書いてください。');
+  const { data, error } = await supabase
+    .from('items')
+    .insert({
+      title: input.title.trim() || [...text.split('\n')[0]].slice(0, 30).join('') || 'ノート',
+      ocr_text: text,
+      source_type: 'note',
+      url: normalizeUrl(input.url),
+    })
+    .select('id')
+    .single();
+  if (error || !data) throw new Error(toJapaneseError(error?.message ?? '保存できませんでした'));
+  return data.id as string;
 }
 
 /** 整理待ち（画像だけで保存して、まだ文字にしていないもの）の件数 */

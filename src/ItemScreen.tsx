@@ -76,7 +76,7 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
       const map = await imageUrls(detail.imagePaths);
       const urls = detail.imagePaths.map((p) => map[p]).filter(Boolean);
       setImageUrlList(urls);
-      if (!imageOnly) {
+      if (!imageOnly && !item.isNote) {
         setReading({ label: '準備中', ratio: 0 });
         const r = await readFiles(urls.slice(before));
         await appendReadText(detail, r.text);
@@ -119,6 +119,24 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
       setError(`うまくいきませんでした。${e instanceof Error ? e.message : ''}`);
     } finally {
       setImageBusy(false);
+    }
+  }
+
+  // リンク
+  const [linkEditing, setLinkEditing] = useState(false);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
+  async function saveLink() {
+    setError('');
+    setLinkSaving(true);
+    try {
+      await updateItem(id, { url: linkDraft });
+      await reload();
+      setLinkEditing(false);
+    } catch (e) {
+      setError(`リンクを保存できませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setLinkSaving(false);
     }
   }
 
@@ -251,7 +269,12 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     setError('');
     setSavingEdit(true);
     try {
-      await updateItem(id, { title: draftTitle, text: { value: draftText, ocrText: item.ocrText } });
+      await updateItem(
+        id,
+        item.isNote
+          ? { title: draftTitle, noteText: draftText }
+          : { title: draftTitle, text: { value: draftText, ocrText: item.ocrText } },
+      );
       await reload();
       setEditing(false);
       window.scrollTo({ top: 0 });
@@ -303,7 +326,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
   const draftEdited = item !== null && draftText !== item.ocrText;
   // 画像だけで保存した記事（読み取った文章も手直しした文章も無い）
-  const imageOnly = item !== null && !item.ocrText && !item.edited;
+  const imageOnly = item !== null && !item.isNote && !item.ocrText && !item.edited;
 
   return (
     <section>
@@ -399,6 +422,47 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             </div>
           </div>
 
+          <div className="card link-card">
+            <h2 className="card-title">リンク</h2>
+            {item.url && !linkEditing && (
+              <a className="item-link" href={item.url} target="_blank" rel="noopener noreferrer">
+                🔗 {linkLabel(item.url)}
+              </a>
+            )}
+            {linkEditing ? (
+              <div className="link-edit">
+                <input
+                  className="title-input"
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  value={linkDraft}
+                  onChange={(e) => setLinkDraft(e.target.value)}
+                  placeholder="https://…（公式サイト、元のページなど）"
+                  autoFocus
+                />
+                <div className="title-edit-actions">
+                  <button className="btn-small is-primary" onClick={saveLink} disabled={linkSaving}>
+                    {linkSaving ? '保存しています…' : '保存'}
+                  </button>
+                  <button className="btn-small" onClick={() => setLinkEditing(false)} disabled={linkSaving}>
+                    やめる
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="btn-small"
+                onClick={() => {
+                  setLinkDraft(item.url);
+                  setLinkEditing(true);
+                }}
+              >
+                {item.url ? 'リンクを変える' : '＋ リンクを付ける'}
+              </button>
+            )}
+          </div>
+
           <div className="card shelf-card">
             <h2 className="card-title">棚に移す</h2>
             <p className="hint">特に分けたいときに選びます。どの棚に移しても、ライブラリーにも残ります。</p>
@@ -454,7 +518,10 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </div>
 
           <div className="card">
-            <h2 className="card-title">元の画像{imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}</h2>
+            <h2 className="card-title">
+              {item.isNote ? '写真・画像' : '元の画像'}
+              {imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}
+            </h2>
             {imageUrlList.map((url, i) => (
               <div key={url} className="item-image-block">
                 <button className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>
@@ -516,14 +583,16 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               onChange={(e) => { addImages(e.target.files); e.target.value = ''; }}
             />
             <button className="btn-secondary" onClick={() => addRef.current?.click()} disabled={adding || reading !== null}>
-              {adding ? '画像を足しています…' : '＋ 続きの画像を足す'}
+              {adding ? '画像を足しています…' : item.isNote ? '＋ 写真・画像を添える' : '＋ 続きの画像を足す'}
             </button>
             <p className="hint">
-              {imageOnly
-                ? '足した画像は、この記事の後ろに並びます。'
-                : '足した画像も文字を読み取って、文章の最後につなげます。'}
+              {item.isNote
+                ? '添えた写真・画像は、このノートの下に並びます（文字にはしません）。'
+                : imageOnly
+                  ? '足した画像は、この記事の後ろに並びます。'
+                  : '足した画像も文字を読み取って、文章の最後につなげます。'}
             </p>
-            {!imageOnly && imageUrlList.length > 0 && (
+            {!imageOnly && !item.isNote && imageUrlList.length > 0 && (
               reading ? (
                 <p className="progress-label">{reading.label}…</p>
               ) : (
@@ -563,7 +632,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             <textarea className="ocr-text" value={draftText} onChange={(e) => setDraftText(e.target.value)} />
             <p className="hint">
               読み取ったままの文章は別に残るので、いつでも戻せます。
-              {draftEdited && (
+              {draftEdited && !item.isNote && (
                 <button
                   className="btn-inline"
                   onClick={() => {
@@ -588,4 +657,16 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
       )}
     </section>
   );
+}
+
+/** リンクの見せ方：長い住所は、サイト名＋先頭だけにする */
+function linkLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const rest = decodeURIComponent(u.pathname + u.search).replace(/\/$/, '');
+    const short = rest.length > 30 ? `${rest.slice(0, 30)}…` : rest;
+    return `${u.hostname}${short}`;
+  } catch {
+    return url;
+  }
 }

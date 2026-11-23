@@ -133,7 +133,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 {item.imagePath && urls[item.imagePath] ? (
                   <img src={urls[item.imagePath]} alt="" />
                 ) : (
-                  <span className="thumb-empty" aria-hidden="true">🖼️</span>
+                  <span className="thumb-empty" aria-hidden="true">{item.isNote ? '✎' : '🖼️'}</span>
                 )}
                 <span className="review-no">{i + 1}</span>
               </button>
@@ -328,7 +328,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 {item.imagePath && urls[item.imagePath] ? (
                   <img src={urls[item.imagePath]} alt="" loading="lazy" />
                 ) : (
-                  <span className="thumb-empty" aria-hidden="true">🖼️</span>
+                  <span className="thumb-empty" aria-hidden="true">{item.isNote ? '✎' : '🖼️'}</span>
                 )}
               </span>
               <span className="item-main">
@@ -337,6 +337,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 <span className="item-meta">
                   {formatDate(item.createdAt)}
                   {item.edited && <span className="state-badge is-edited">手直しあり</span>}
+                  {item.isNote && <span className="note-badge">ノート</span>}
+                  {item.url && <span className="note-badge">🔗</span>}
                   {!shelf && item.shelfId && shelfMap[item.shelfId] && (
                     <span className="shelf-badge">
                       {shelfMap[item.shelfId].icon} {shelfMap[item.shelfId].name}

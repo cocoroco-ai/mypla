@@ -6,6 +6,7 @@ import LibraryScreen from './LibraryScreen';
 import ItemScreen from './ItemScreen';
 import TrashScreen from './TrashScreen';
 import ShelfManager from './ShelfManager';
+import NoteScreen from './NoteScreen';
 import BackupScreen from './BackupScreen';
 import { isConfigured, supabase } from './supabase';
 import { addSampleItems } from './samples';
@@ -36,6 +37,7 @@ type Screen =
   | { name: 'item'; id: string; back?: Screen }
   | { name: 'shelf'; shelf: Shelf }
   | { name: 'shelves' }
+  | { name: 'note' }
   | { name: 'trash' }
   | { name: 'backup' };
 
@@ -134,6 +136,7 @@ export default function App() {
             onOpen={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })}
             onShelf={(shelf) => setScreen({ name: 'shelf', shelf })}
             onManageShelves={() => setScreen({ name: 'shelves' })}
+            onNote={() => setScreen({ name: 'note' })}
             onTrash={() => setScreen({ name: 'trash' })}
             onBackup={() => setScreen({ name: 'backup' })}
           />
@@ -160,6 +163,8 @@ export default function App() {
             onTrash={() => setScreen({ name: 'trash' })}
           />
         );
+      case 'note':
+        return <NoteScreen onBack={home} onSaved={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })} />;
       case 'shelves':
         return <ShelfManager onBack={home} />;
       case 'trash':
@@ -217,11 +222,12 @@ type HomeProps = {
   onOpen: (id: string) => void;
   onShelf: (shelf: Shelf) => void;
   onManageShelves: () => void;
+  onNote: () => void;
   onTrash: () => void;
   onBackup: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -437,9 +443,12 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         データの書き出し・読み込み（バックアップ）
       </button>
 
-      <div className="bottom-action">
+      <div className="bottom-action home-actions">
         <button className="btn-primary btn-large" onClick={onImport}>
-          ＋ スクショを取り込む
+          ＋ スクショ
+        </button>
+        <button className="btn-secondary btn-large" onClick={onNote}>
+          ✎ ノート
         </button>
       </div>
     </section>
