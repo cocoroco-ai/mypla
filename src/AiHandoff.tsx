@@ -9,6 +9,7 @@ const ASKS = [
   { id: 'summary', label: '要約して', text: '次の内容を、短く要約してください。' },
   { id: 'easy', label: 'やさしく説明', text: '次の内容を、専門用語を使わずに、やさしく説明してください。' },
   { id: 'points', label: '要点を3つ', text: '次の内容の要点を、3つの箇条書きにまとめてください。' },
+  { id: 'visual', label: '図解・画像に', text: '次の内容を、ひと目でわかる図解の画像にしてください。文字は日本語で、少なめにしてください。' },
   { id: 'use', label: '活かし方', text: '次の内容を、私の仕事や暮らしにどう活かせるか、具体的な案を3つ出してください。' },
   { id: 'free', label: '自分で書く', text: '' },
 ] as const;
@@ -90,6 +91,9 @@ export default function AiHandoff({ title, body, url, source }: Props) {
           </button>
         ))}
       </div>
+      {askId === 'visual' && (
+        <p className="hint ai-ask-note">🖼 画像を作れるのは ChatGPT・Gemini です。Claude は図や表の形でまとめてくれます。</p>
+      )}
       <textarea
         className="ai-ask-text"
         value={ask}
