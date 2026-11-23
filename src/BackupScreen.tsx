@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { createBackup, restoreBackup, saveBackupFile, type RestoreResult } from './backup';
+import { markBackupDone } from './library';
 
 /** 書き出し（バックアップ）と読み込み（復元） */
 export default function BackupScreen({ onBack }: { onBack: () => void }) {
@@ -34,6 +35,8 @@ export default function BackupScreen({ onBack }: { onBack: () => void }) {
     setError('');
     try {
       const how = await saveBackupFile(ready.file);
+      // 保存できたら記録して、ホームの「そろそろ書き出しを」を止める
+      if (how !== 'cancelled') await markBackupDone().catch(() => undefined);
       if (how === 'shared') setNotice('保存しました。保存した場所（「ファイル」アプリなど）を確かめておいてください。');
       if (how === 'downloaded') setNotice('ダウンロードしました。「ダウンロード」フォルダなどに保存されています。');
     } catch (e) {

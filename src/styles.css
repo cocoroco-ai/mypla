@@ -630,3 +630,25 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .fav-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fav-more { margin-top: 6px; }
 .fav-list { grid-template-columns: minmax(0, 1fr); } .fav-list li { min-width: 0; } .fav-item { overflow: hidden; }
+
+/* AIに渡す */
+.ai-row { margin-top: 10px; display: grid; }
+.ai-handoff { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.ai-title { margin: 0; font-size: 15px; color: var(--deep); }
+.ai-handoff .hint { margin: 0; }
+.ai-asks { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-ask {
+  min-height: 40px; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 14px; cursor: pointer;
+}
+.ai-ask.is-on { border-color: var(--deep); background: var(--mint); color: var(--deep); font-weight: 700; }
+.ai-ask-text {
+  width: 100%; min-height: 72px; padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 15px; line-height: 1.6; background: var(--surface); color: var(--text);
+}
+.ai-targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ai-targets button { min-height: 48px; font-size: 14px; padding: 6px 4px; }
+.ai-handoff .notice, .ai-handoff .error { margin: 0; }
+.ai-targets-label { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-sub); }
+.notice-item.is-backup { background: #eef6ff; }
+.notice-item.is-backup .notice-kind { color: var(--blue); }

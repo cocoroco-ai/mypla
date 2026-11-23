@@ -15,6 +15,7 @@ import {
   cleanupExpiredGuests,
   countByShelf,
   countUnsorted,
+  backupReminder,
   listFavorites,
   listShelves,
   pickTodayWord,
@@ -245,6 +246,12 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   const [shelves, setShelves] = useState<Shelf[] | null>(null);
   const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
   const [unsortedCount, setUnsortedCount] = useState(0);
+  // バックアップの声かけ（null = 不要、-1 = まだ一度も、数字 = 前回からの日数）
+  const [backupDays, setBackupDays] = useState<number | null>(null);
+  useEffect(() => {
+    if (count === null) return;
+    backupReminder(count).then(setBackupDays).catch(() => setBackupDays(null));
+  }, [count]);
   const [favorites, setFavorites] = useState<{ items: ItemSummary[]; total: number }>({ items: [], total: 0 });
   useEffect(() => {
     listFavorites(5).then(setFavorites).catch(() => setFavorites({ items: [], total: 0 }));
@@ -289,7 +296,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
     usageSummary().then(setUsage).catch(() => setUsage(null));
   }, [isGuest]);
 
-  const hasNotice = todayWord !== null || reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
+  const hasNotice = backupDays !== null || todayWord !== null || reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
 
   // はじめてガイド（お試しの人だけ。「閉じる」を押したら、その端末では出さない）
   const guideKey = `mypla-guide-closed-${userId}`;
@@ -367,6 +374,18 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           <p className="hint">いまはお知らせはありません。</p>
         ) : (
           <ul className="notice-list">
+            {backupDays !== null && (
+              <li>
+                <button className="notice-item is-backup" onClick={onBackup}>
+                  <span className="notice-kind">💾 バックアップ</span>
+                  <span className="notice-text">
+                    {backupDays < 0
+                      ? 'まだ一度も書き出していません。万一に備えて、書き出し（バックアップ）をしておきましょう。'
+                      : `最後の書き出しから${backupDays}日たちました。そろそろ書き出し（バックアップ）をしておきましょう。`}
+                  </span>
+                </button>
+              </li>
+            )}
             {todayWord && (
               <li>
                 <button className="notice-item is-word" onClick={() => onOpen(todayWord.id)}>

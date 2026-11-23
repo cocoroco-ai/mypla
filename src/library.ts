@@ -520,6 +520,43 @@ export async function deleteImage(imageId: string, path: string): Promise<void> 
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
+// ---------------------------------------------------------------------
+// バックアップの声かけ
+// ---------------------------------------------------------------------
+
+/** 書き出しを勧める間隔（日） */
+export const BACKUP_REMIND_DAYS = 30;
+
+/** 最後に書き出した日時（まだなら null） */
+export async function getLastBackup(): Promise<Date | null> {
+  const { data, error } = await supabase.from('user_settings').select('last_backup_at').maybeSingle();
+  if (error) throw new Error(toJapaneseError(error.message));
+  return data?.last_backup_at ? new Date(data.last_backup_at as string) : null;
+}
+
+/** 書き出したことを記録する（どの端末で書き出しても、声かけが止まる） */
+export async function markBackupDone(): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return;
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('user_settings')
+    .upsert({ user_id: userData.user.id, last_backup_at: now, updated_at: now }, { onConflict: 'user_id' });
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/**
+ * 声かけが必要か：記事が5件以上あって、まだ一度も書き出していないか、最後の書き出しから30日以上たっているとき。
+ * 戻り値：必要なら経過日数（一度も無ければ -1）、不要なら null
+ */
+export async function backupReminder(itemCount: number): Promise<number | null> {
+  if (itemCount < 5) return null;
+  const last = await getLastBackup();
+  if (!last) return -1;
+  const days = Math.floor((Date.now() - last.getTime()) / DAY_MS);
+  return days >= BACKUP_REMIND_DAYS ? days : null;
+}
+
 /** ★お気に入り（最近さわった順に、少しだけ。ホーム用）と全部の件数 */
 export async function listFavorites(limit = 5): Promise<{ items: ItemSummary[]; total: number }> {
   const { data, error, count } = await supabase

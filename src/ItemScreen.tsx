@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
+import AiHandoff from './AiHandoff';
 import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, type Shelf, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
@@ -426,6 +427,9 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 <button className="btn-secondary" onClick={copy}>
                   {copied ? 'コピーしました' : '文章をコピー'}
                 </button>
+              </div>
+              <div className="ai-row">
+                <AiHandoff title={item.title} body={item.body} url={item.url} source={item.source} />
               </div>
             </div>
           )}
