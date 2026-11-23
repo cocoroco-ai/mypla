@@ -11,6 +11,11 @@ import { addSampleItems } from './samples';
 import {
   countItems,
   cleanupExpiredGuests,
+  countByShelf,
+  pickTodayWord,
+  SHELVES,
+  type ItemSummary,
+  type ShelfId,
   countTrashExpiringSoon,
   myImageQuota,
   myQuota,
@@ -26,7 +31,8 @@ type Screen =
   | { name: 'home' }
   | { name: 'import' }
   | { name: 'library' }
-  | { name: 'item'; id: string }
+  | { name: 'item'; id: string; back?: Screen }
+  | { name: 'shelf'; shelf: ShelfId }
   | { name: 'trash' }
   | { name: 'backup' };
 
@@ -122,7 +128,8 @@ export default function App() {
             dataVersion={dataVersion}
             onImport={importShot}
             onLibrary={library}
-            onOpen={(id) => setScreen({ name: 'item', id })}
+            onOpen={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })}
+            onShelf={(shelf) => setScreen({ name: 'shelf', shelf })}
             onTrash={() => setScreen({ name: 'trash' })}
             onBackup={() => setScreen({ name: 'backup' })}
           />
@@ -138,12 +145,23 @@ export default function App() {
             onTrash={() => setScreen({ name: 'trash' })}
           />
         );
+      case 'shelf':
+        return (
+          <LibraryScreen
+            key={screen.shelf}
+            shelf={screen.shelf}
+            onBack={home}
+            onImport={importShot}
+            onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
+            onTrash={() => setScreen({ name: 'trash' })}
+          />
+        );
       case 'trash':
         return <TrashScreen onBack={library} />;
       case 'backup':
         return <BackupScreen onBack={home} />;
       case 'item':
-        return <ItemScreen id={screen.id} onBack={library} />;
+        return <ItemScreen id={screen.id} onBack={() => setScreen(screen.back ?? { name: 'library' })} backLabel={backLabel(screen.back)} />;
     }
   }
 
@@ -175,6 +193,13 @@ export default function App() {
   );
 }
 
+function backLabel(back?: Screen): string {
+  if (!back || back.name === 'library') return 'ライブラリー';
+  if (back.name === 'home') return 'ホーム';
+  if (back.name === 'shelf') return SHELVES.find((s) => s.id === back.shelf)?.name ?? 'ライブラリー';
+  return '戻る';
+}
+
 type HomeProps = {
   purged: number | null;
   isGuest: boolean;
@@ -184,11 +209,12 @@ type HomeProps = {
   onImport: () => void;
   onLibrary: () => void;
   onOpen: (id: string) => void;
+  onShelf: (shelf: ShelfId) => void;
   onTrash: () => void;
   onBackup: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -197,6 +223,11 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
 
   // お知らせ（ゴミ箱の自動削除が終わってから調べる）
   const [reread, setReread] = useState<RereadPick | null>(null);
+  const [todayWord, setTodayWord] = useState<ItemSummary | null>(null);
+  const [shelfCounts, setShelfCounts] = useState<Record<ShelfId, number> | null>(null);
+  useEffect(() => {
+    countByShelf().then(setShelfCounts).catch(() => setShelfCounts(null));
+  }, [dataVersion]);
   const [expiring, setExpiring] = useState(0);
   const [noticesReady, setNoticesReady] = useState(false);
   useEffect(() => {
@@ -204,8 +235,10 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
     Promise.all([
       pickReread().catch(() => null),
       countTrashExpiringSoon().catch(() => 0),
-    ]).then(([pick, soonCount]) => {
+      pickTodayWord().catch(() => null),
+    ]).then(([pick, soonCount, word]) => {
       setReread(pick);
+      setTodayWord(word);
       setExpiring(soonCount);
       setNoticesReady(true);
     });
@@ -225,7 +258,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
     usageSummary().then(setUsage).catch(() => setUsage(null));
   }, [isGuest]);
 
-  const hasNotice = reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
+  const hasNotice = todayWord !== null || reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
 
   // はじめてガイド（お試しの人だけ。「閉じる」を押したら、その端末では出さない）
   const guideKey = `mypla-guide-closed-${userId}`;
@@ -245,11 +278,6 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
     }
   }
 
-  const soon = [
-    { name: 'AI図鑑', note: '各AIの特徴と自分のメモ' },
-    { name: '学びノート', note: '学んだことのまとめ' },
-    { name: 'アイデア帳', note: 'ひらめきの置き場所' },
-  ];
   return (
     <section>
       <p className="tagline">集める知識、広がる私。</p>
@@ -271,7 +299,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           {isGuest && (
             <details className="guest-upgrade">
               <summary>本格的に使いたい方へ</summary>
-              <p>お試しのデータを引き継いで、スマホとパソコンの両方で使えるアカウント（100件まで）に移れます。</p>
+              <p>お試しのデータを引き継いで、スマホとパソコンの両方で使えるアカウント（300件まで）に移れます。</p>
               <ol>
                 <li>下の「データの書き出し・読み込み」で、ファイルを作って端末に保存します。</li>
                 <li>講座の中で、mypla. の作者に「本格的に使いたい」と連絡してください。アカウント（メールアドレスとパスワード）をお送りします。</li>
@@ -308,6 +336,15 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           <p className="hint">いまはお知らせはありません。</p>
         ) : (
           <ul className="notice-list">
+            {todayWord && (
+              <li>
+                <button className="notice-item is-word" onClick={() => onOpen(todayWord.id)}>
+                  <span className="notice-kind">💎 今日のことば</span>
+                  <span className="notice-word">{wordPreview(todayWord.body || todayWord.title)}</span>
+                  {todayWord.source && <span className="notice-source">— {todayWord.source}</span>}
+                </button>
+              </li>
+            )}
             {reread && (
               <li>
                 <button className="notice-item" onClick={() => onOpen(reread.id)}>
@@ -354,12 +391,14 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           <span className="tile-note">保存した情報の一覧</span>
           <span className="badge">{count === null ? '開く' : `${count}件`}</span>
         </button>
-        {soon.map((t) => (
-          <div key={t.name} className="tile is-soon">
-            <span className="tile-name">{t.name}</span>
+        {SHELVES.map((t) => (
+          <button key={t.id} className={`tile is-ready shelf-${t.id}`} onClick={() => onShelf(t.id)}>
+            <span className="tile-name">
+              {t.icon} {t.name}
+            </span>
             <span className="tile-note">{t.note}</span>
-            <span className="badge">準備中</span>
-          </div>
+            <span className="badge">{shelfCounts ? `${shelfCounts[t.id]}件` : '開く'}</span>
+          </button>
         ))}
       </div>
 
@@ -403,4 +442,11 @@ function UsageBar({ label, used, max }: { label: string; used: number; max: numb
       </div>
     </div>
   );
+}
+
+/** 今日のことばに出す長さ（長い文章は先頭だけ） */
+function wordPreview(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  const chars = [...flat];
+  return chars.length > 80 ? `${chars.slice(0, 80).join('')}…` : flat;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, type ItemSummary } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, searchWords, shelfOf, type ItemSummary, type ShelfId } from './library';
 
 const PAGE = 20;
 
@@ -9,10 +9,13 @@ type Props = {
   onOpen: (id: string) => void;
   onImport: () => void;
   onTrash: () => void;
+  shelf?: ShelfId; // 棚を開いたとき（その棚の記事だけを並べる）
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
-export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Props) {
+export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf }: Props) {
+  const shelfInfo = shelf ? shelfOf(shelf) : null;
+  const isWords = shelf === 'kotoba';
   const [items, setItems] = useState<ItemSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -73,7 +76,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted);
+      const page = await listItems(offset, PAGE, q, unsorted, shelf ?? null);
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -176,7 +179,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   return (
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
-      <h1 className="screen-title">ライブラリー</h1>
+      <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
+      {shelfInfo && (
+        <p className="hint">
+          {shelfInfo.note}。ライブラリーの記事を開いて「棚に移す」で、ここに集められます（ライブラリーにも残ります）。
+        </p>
+      )}
 
       <form
         className="search"
@@ -192,7 +200,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
           className="search-input"
           type="search"
           enterKeyHint="search"
-          placeholder="言葉で探す（タイトル・文章・メモ）"
+          placeholder="言葉で探す（タイトル・文章・メモ・誰の言葉）"
           aria-label="ライブラリーを検索"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -214,7 +222,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
         )}
       </div>
 
-      {(unsortedCount > 0 || unsorted) && (
+      {!shelf && (unsortedCount > 0 || unsorted) && (
         <div className="segmented library-filter" role="group" aria-label="表示する記事">
           <button className={!unsorted ? 'is-on' : ''} onClick={() => setUnsorted(false)}>すべて</button>
           <button className={unsorted ? 'is-on' : ''} onClick={() => setUnsorted(true)}>
@@ -252,14 +260,40 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
             </>
           ) : (
             <>
-              <p>まだ保存した情報がありません。</p>
-              <p className="hint">スクショを取り込んで「保存する」を押すと、ここに並びます。</p>
+              {shelfInfo ? (
+                <>
+                  <p>まだ「{shelfInfo.name}」に記事がありません。</p>
+                  <p className="hint">ライブラリーで記事を開き、「棚に移す」から「{shelfInfo.name}」を選ぶと、ここに並びます。</p>
+                </>
+              ) : (
+                <>
+                  <p>まだ保存した情報がありません。</p>
+                  <p className="hint">スクショを取り込んで「保存する」を押すと、ここに並びます。</p>
+                </>
+              )}
             </>
           )}
         </div>
       )}
 
-      <ul className="item-list">
+      {isWords && !merging && (
+        <ul className="word-list">
+          {items.map((item) => (
+            <li key={item.id}>
+              <button className="word-card" onClick={() => onOpen(item.id)}>
+                <span className="word-text">{highlight(wordText(item), words)}</span>
+                {item.source && <span className="word-source">— {highlight(item.source, words)}</span>}
+                <span className="word-foot">
+                  {item.imagePath && urls[item.imagePath] && <img src={urls[item.imagePath]} alt="" loading="lazy" />}
+                  <span className="item-meta">{formatDate(item.createdAt)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <ul className="item-list" hidden={isWords && !merging}>
         {items.map((item) => (
           <li key={item.id}>
             <button
@@ -295,6 +329,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
                 <span className="item-meta">
                   {formatDate(item.createdAt)}
                   {item.edited && <span className="state-badge is-edited">手直しあり</span>}
+                  {!shelf && item.shelf && (
+                    <span className="shelf-badge">
+                      {shelfOf(item.shelf)?.icon} {shelfOf(item.shelf)?.name}
+                    </span>
+                  )}
                 </span>
               </span>
             </button>
@@ -397,4 +436,11 @@ function highlight(text: string, words: string[]): ReactNode {
   const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const parts = text.split(new RegExp(`(${escaped.join('|')})`, 'gi'));
   return parts.map((p, i) => (i % 2 === 1 ? <mark key={i}>{p}</mark> : p));
+}
+
+/** ことばの宝箱のカードに出す言葉（手直しした文章 → 読み取った文章 → タイトルの順に使う） */
+function wordText(item: ItemSummary): string {
+  const text = (item.body || item.title).trim();
+  const chars = [...text];
+  return chars.length > 140 ? `${chars.slice(0, 140).join('')}…` : text;
 }

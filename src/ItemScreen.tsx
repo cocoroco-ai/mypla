@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, SHELVES, shelfOf, type ShelfId, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -9,7 +9,7 @@ import { suggestTitle } from './ImportScreen';
  * 読む・コピーする・ひとことメモを書く・タイトルと文章を書き換える。
  * 削除は「ゴミ箱に入れる」（30日間は元に戻せる）。
  */
-export default function ItemScreen({ id, onBack }: { id: string; onBack: () => void }) {
+export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー' }: { id: string; onBack: () => void; backLabel?: string }) {
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [imageUrlList, setImageUrlList] = useState<string[]>([]);
   const imageUrl = imageUrlList[0] ?? null;
@@ -155,6 +155,44 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
   }, [id]);
 
   const memoDirty = item !== null && memo.trim() !== item.memo;
+
+  // 棚（ことばの宝箱など）と「誰の言葉・どこで見たか」
+  const [source, setSource] = useState('');
+  const [sourceState, setSourceState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [shelfBusy, setShelfBusy] = useState(false);
+  useEffect(() => {
+    if (item) setSource(item.source);
+  }, [item?.id, item?.source]);
+  const sourceDirty = item !== null && source.trim() !== item.source;
+
+  async function moveToShelf(next: ShelfId | null) {
+    if (!item || next === item.shelf) return;
+    setError('');
+    setShelfBusy(true);
+    try {
+      await updateItem(id, { shelf: next });
+      await reload();
+      setNotice(next ? `「${shelfOf(next)?.name}」に移しました（ライブラリーにも残っています）。` : '棚から外しました（ライブラリーには残っています）。');
+    } catch (e) {
+      setError(`移せませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setShelfBusy(false);
+    }
+  }
+
+  async function saveSource() {
+    setError('');
+    setSourceState('saving');
+    try {
+      await updateItem(id, { source });
+      await reload();
+      setSourceState('saved');
+      setTimeout(() => setSourceState('idle'), 1500);
+    } catch (e) {
+      setSourceState('idle');
+      setError(`保存できませんでした。${e instanceof Error ? e.message : ''}`);
+    }
+  }
   const editDirty = editing && item !== null && (draftTitle !== item.title || draftText !== item.body);
 
   function back() {
@@ -263,9 +301,10 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
   return (
     <section>
-      <button className="link-back" onClick={back}>← ライブラリー</button>
+      <button className="link-back" onClick={back}>← {backLabel}</button>
 
       {error && <p className="error" role="alert">{error}</p>}
+      {notice && <p className="notice" role="status">{notice}</p>}
       {!item && !error && <p className="hint center">読み込んでいます…</p>}
 
       {item && !editing && (
@@ -336,6 +375,9 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             ) : (
               <div className="item-text">{showOcr ? item.ocrText : item.body}</div>
             )}
+            {item.source && !imageOnly && (
+              <p className="item-source">— {item.source}</p>
+            )}
             {item.edited && (
               <button className="btn-inline" onClick={() => setShowOcr((v) => !v)}>
                 {showOcr ? '手直しした文章を表示する' : '読み取ったままの文章を表示する'}
@@ -349,6 +391,45 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 タイトル・文章を直す
               </button>
             </div>
+          </div>
+
+          <div className="card shelf-card">
+            <h2 className="card-title">棚に移す</h2>
+            <p className="hint">特に分けたいときに選びます。どの棚に移しても、ライブラリーにも残ります。</p>
+            <div className="shelf-choices" role="group" aria-label="置く棚">
+              {SHELVES.map((sh) => (
+                <button
+                  key={sh.id}
+                  className={`shelf-choice ${item.shelf === sh.id ? 'is-on' : ''}`}
+                  onClick={() => moveToShelf(sh.id)}
+                  disabled={shelfBusy}
+                  aria-pressed={item.shelf === sh.id}
+                >
+                  {sh.icon} {sh.name}
+                </button>
+              ))}
+            </div>
+            {item.shelf && (
+              <button className="btn-text" onClick={() => moveToShelf(null)} disabled={shelfBusy}>
+                棚から外す（ライブラリーだけにする）
+              </button>
+            )}
+            {(item.shelf === 'kotoba' || item.source) && (
+              <div className="source-field">
+                <h3 className="source-title">誰の言葉・どこで見たか</h3>
+                <input
+                  className="title-input"
+                  value={source}
+                  maxLength={200}
+                  onChange={(e) => setSource(e.target.value)}
+                  placeholder="例：〇〇さんの本『△△』より、セミナーで聞いた言葉 など"
+                  enterKeyHint="done"
+                />
+                <button className="btn-small is-primary" onClick={saveSource} disabled={!sourceDirty || sourceState === 'saving'}>
+                  {sourceState === 'saving' ? '保存しています…' : sourceState === 'saved' ? '保存しました' : '保存'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="card">
@@ -367,7 +448,6 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
           <div className="card">
             <h2 className="card-title">元の画像{imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}</h2>
-            {notice && <p className="notice" role="status">{notice}</p>}
             {imageUrlList.map((url, i) => (
               <div key={url} className="item-image-block">
                 <button className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>

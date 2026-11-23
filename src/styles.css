@@ -498,3 +498,43 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .title-edit-actions { display: flex; gap: 8px; }
 .btn-small.is-primary { background: var(--deep); color: #fff; border-color: var(--deep); }
 .merge-title { margin-bottom: 16px; }
+
+/* 棚 */
+.shelf-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
+  background: #fff4e0; color: #8a5a00; font-size: 11px; font-weight: 700;
+}
+.tile.shelf-kotoba { background: linear-gradient(135deg, #fffaf0, #fff1d6); border-color: #f0d9a8; }
+
+/* ことばの宝箱：言葉を大きく見せるカード */
+.word-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
+.word-card {
+  width: 100%; display: grid; gap: 8px; padding: 18px 18px 12px; text-align: left; font: inherit; color: inherit;
+  background: linear-gradient(135deg, #fffdf7, #fff6e3); border: 1px solid #f0d9a8; border-radius: 14px; cursor: pointer;
+}
+.word-text {
+  font-size: 18px; line-height: 1.8; color: #3b2f1c; font-weight: 600; white-space: pre-wrap;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+}
+.word-source { font-size: 14px; color: #8a6a3a; text-align: right; }
+.word-foot { display: flex; align-items: center; gap: 8px; }
+.word-foot img { width: 36px; height: 48px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid #f0d9a8; }
+
+/* お知らせ：今日のことば */
+.notice-item.is-word { background: linear-gradient(135deg, #fffdf7, #fff1d6); }
+.notice-item.is-word .notice-kind { color: #8a5a00; }
+.notice-word { font-size: 16px; line-height: 1.7; color: #3b2f1c; font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif; }
+.notice-source { font-size: 13px; color: #8a6a3a; text-align: right; }
+
+/* 記事画面：棚に移す */
+.shelf-card .hint { margin: 0 0 8px; }
+.shelf-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shelf-choice {
+  min-height: 44px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 14px; cursor: pointer;
+}
+.shelf-choice.is-on { border-color: var(--deep); background: var(--mint); color: var(--deep); font-weight: 700; }
+.source-field { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.source-title { margin: 0; font-size: 14px; color: var(--deep); }
+.source-field .btn-small { justify-self: start; }
+.item-source { margin: 8px 0 0; text-align: right; color: #8a6a3a; font-size: 14px; }

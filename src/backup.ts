@@ -29,6 +29,8 @@ type BackupItem = {
   ocr_confidence: number | null;
   created_at: string;
   updated_at: string;
+  shelf?: string | null; // 棚（008 以降の書き出しにだけある）
+  source?: string; // 誰の言葉・どこで見たか
   images: BackupImage[];
 };
 
@@ -57,6 +59,7 @@ function readable(items: BackupItem[], exportedAt: Date): string {
     lines.push(`■ ${item.title}`);
     lines.push(`保存：${new Date(item.created_at).toLocaleString('ja-JP')}`);
     if (item.images.length > 0) lines.push(`画像：${item.images.map((i) => i.file).join('、')}`);
+    if (item.source) lines.push(`誰の言葉・どこで：${item.source}`);
     if (item.memo) lines.push(`メモ：${item.memo}`);
     lines.push('');
     lines.push(item.edited_text ?? item.ocr_text);
@@ -73,7 +76,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
     const { data, error } = await supabase
       .from('items')
       .select(
-        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, item_images(storage_path, position, mime, width, height, regions)',
+        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, item_images(storage_path, position, mime, width, height, regions)',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -202,6 +205,8 @@ async function restoreOne(item: BackupItem, entries: Record<string, Uint8Array>,
     ocr_confidence: item.ocr_confidence ?? null,
     created_at: item.created_at,
     updated_at: item.updated_at,
+    shelf: item.shelf ?? null,
+    source: item.source ?? '',
   };
   // 元の番号のまま戻す（2回目の読み込みで二重にならないように）。
   // 別の人がすでに同じ番号を使っていたときだけ、新しい番号で入れる
