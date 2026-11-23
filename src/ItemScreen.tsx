@@ -487,7 +487,10 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             )}
             {(currentShelf?.style === 'cards' || item.source) && (
               <div className="source-field">
-                <h3 className="source-title">誰の言葉・どこで見たか</h3>
+                <h3 className="source-title">
+                  誰の言葉・どこで見たか <span className="optional">任意</span>
+                </h3>
+                <p className="hint">分からなければ空欄のままで大丈夫です。棚への移動は、もう保存されています。</p>
                 <input
                   className="title-input"
                   value={source}
@@ -496,9 +499,11 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                   placeholder="例：〇〇さんの本『△△』より、セミナーで聞いた言葉 など"
                   enterKeyHint="done"
                 />
-                <button className="btn-small is-primary" onClick={saveSource} disabled={!sourceDirty || sourceState === 'saving'}>
-                  {sourceState === 'saving' ? '保存しています…' : sourceState === 'saved' ? '保存しました' : '保存'}
-                </button>
+                {(sourceDirty || sourceState !== 'idle') && (
+                  <button className="btn-small is-primary" onClick={saveSource} disabled={!sourceDirty || sourceState === 'saving'}>
+                    {sourceState === 'saving' ? '保存しています…' : sourceState === 'saved' ? '保存しました' : '保存'}
+                  </button>
+                )}
               </div>
             )}
           </div>
