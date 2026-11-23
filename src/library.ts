@@ -512,6 +512,39 @@ export async function splitImage(imageId: string): Promise<string> {
   return data as string;
 }
 
+/**
+ * 記事の中の1枚を、切り抜いた画像に置き換える（元の画像は消える＝元に戻せない）。
+ * 並び順・記事・棚・★・メモはそのまま。新しい画像を入れてから記録を書き換え、最後に古い画像を消す
+ */
+export async function replaceImage(imageId: string, itemId: string, oldPath: string, file: File): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error('ログインの有効期限が切れました。もう一度ログインしてください。');
+  const image = await prepareForUpload(file);
+  const path = `${userData.user.id}/${itemId}/crop-${Date.now().toString(36)}.${image.ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, image.blob, { contentType: image.mime, upsert: false });
+  if (uploadError) throw new Error(toJapaneseError(uploadError.message));
+  const { data: updated, error } = await supabase
+    .from('item_images')
+    .update({
+      storage_path: path,
+      mime: image.mime,
+      bytes: image.blob.size,
+      width: image.width,
+      height: image.height,
+      regions: null, // 切り抜いた画像そのものが範囲なので、囲んだ記録は要らない
+    })
+    .eq('id', imageId)
+    .select('id');
+  if (error || !updated || updated.length === 0) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw new Error(error ? toJapaneseError(error.message) : '画像が見つかりませんでした');
+  }
+  // 古い画像の片付け。失敗しても置き換え自体は済んでいるので、止めない
+  await supabase.storage.from(BUCKET).remove([oldPath]);
+}
+
 /** 記事の中の1枚を完全に削除する（元に戻せない） */
 export async function deleteImage(imageId: string, path: string): Promise<void> {
   const { error: removeError } = await supabase.storage.from(BUCKET).remove([path]);

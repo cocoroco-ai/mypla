@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
 import AiHandoff from './AiHandoff';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, type Shelf, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import CropEditor from './CropEditor';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -124,6 +125,48 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     } catch (e) {
       setError(`うまくいきませんでした。${e instanceof Error ? e.message : ''}`);
     } finally {
+      setImageBusy(false);
+    }
+  }
+
+  // あとから切り抜く（何枚目を切り抜いているか）
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setCropIndex(null);
+  }, [id, mode]);
+
+  /** 1枚を、切り抜いた画像に置き換える。選んでいれば、全部の画像から文字を読み取り直す */
+  async function cropImage(index: number, file: File, reread: boolean) {
+    if (!item) return;
+    const image = item.images[index];
+    if (!image) return;
+    setError('');
+    setNotice('');
+    setImageBusy(true);
+    try {
+      await replaceImage(image.id, id, image.path, file);
+      const detail = await reload();
+      const map = await imageUrls(detail.imagePaths);
+      const urls = detail.imagePaths.map((p) => map[p]).filter(Boolean);
+      setImageUrlList(urls);
+      setCropIndex(null);
+      if (reread) {
+        setReading({ label: '準備中', ratio: 0 });
+        const r = await readFiles(urls);
+        await setReadText(id, r.text, r.confidence);
+        await reload();
+        setNotice('切り抜いて、文字も読み取り直しました。');
+      } else {
+        setNotice(
+          '画像を切り抜きました。' +
+            (detail.body && !item.isNote ? '文章はそのまま残っています。必要なら「全部の画像から文字を読み取り直す」で作り直せます。' : ''),
+        );
+      }
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      setError(`切り抜けませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setReading(null);
       setImageBusy(false);
     }
   }
@@ -670,24 +713,41 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               {item.isNote ? '写真・画像' : '元の画像'}
               {imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}
             </h2>
-            {imageUrlList.map((url, i) => (
-              <div key={url} className="item-image-block">
-                <button className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>
-                  {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
-                  <img className="item-image" src={url} alt={`保存した元の画像（${i + 1}枚目）`} />
-                </button>
-                {imageUrlList.length > 1 && (
+            {imageUrlList.map((url, i) =>
+              cropIndex === i ? (
+                <CropEditor
+                  key={url}
+                  src={url}
+                  no={i + 1}
+                  canReread={!imageOnly && !item.isNote}
+                  busy={imageBusy}
+                  onCancel={() => setCropIndex(null)}
+                  onDone={(file, reread) => cropImage(i, file, reread)}
+                />
+              ) : (
+                <div key={url} className="item-image-block">
+                  <button className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>
+                    {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
+                    <img className="item-image" src={url} alt={`保存した元の画像（${i + 1}枚目）`} />
+                  </button>
                   <div className="image-actions">
-                    <button className="btn-small" onClick={() => removeImage(i, 'split')} disabled={imageBusy}>
-                      この画像を外す（別の記事に）
+                    <button className="btn-small" onClick={() => setCropIndex(i)} disabled={imageBusy || cropIndex !== null || reading !== null}>
+                      ✂ 切り抜く
                     </button>
-                    <button className="btn-danger-small" onClick={() => removeImage(i, 'delete')} disabled={imageBusy}>
-                      削除
-                    </button>
+                    {imageUrlList.length > 1 && (
+                      <>
+                        <button className="btn-small" onClick={() => removeImage(i, 'split')} disabled={imageBusy}>
+                          この画像を外す（別の記事に）
+                        </button>
+                        <button className="btn-danger-small" onClick={() => removeImage(i, 'delete')} disabled={imageBusy}>
+                          削除
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ),
+            )}
             {viewIndex !== null && imageUrlList[viewIndex] && (
               <ImageViewer
                 src={imageUrlList[viewIndex]}

@@ -604,6 +604,13 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .crop-check { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--deep); min-height: 44px; cursor: pointer; }
 .crop-check input { width: 22px; height: 22px; accent-color: var(--deep); }
 .crop-preview { max-width: 100%; max-height: 240px; justify-self: start; border: 1px solid var(--line); border-radius: 8px; }
+.crop-editor { display: grid; gap: 10px; padding: 12px; margin-bottom: 12px; border: 2px solid var(--deep); border-radius: 12px; background: var(--surface); }
+.crop-editor .hint { margin: 0; }
+.crop-editor-title { margin: 0; font-size: 16px; color: var(--deep); }
+.crop-editor-label { margin: 0; font-size: 13px; font-weight: 700; color: var(--deep); }
+.crop-editor .crop-check { font-weight: 400; color: var(--text); }
+.crop-editor-actions { display: grid; gap: 8px; }
+.crop-editor-actions button { width: 100%; }
 
 /* 記事：見る画面（画像が先） */
 .item-view .title-row .btn-small { white-space: nowrap; }
