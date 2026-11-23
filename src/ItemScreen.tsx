@@ -145,6 +145,22 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     }
   }
 
+  // ★お気に入り
+  const [favBusy, setFavBusy] = useState(false);
+  async function toggleFavorite() {
+    if (!item) return;
+    setFavBusy(true);
+    setError('');
+    try {
+      await updateItem(id, { favorite: !item.favorite });
+      await reload();
+    } catch (e) {
+      setError(`お気に入りを変えられませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
   async function saveTitle() {
     setError('');
     setTitleSaving(true);
@@ -345,6 +361,15 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
         <div className="item-view">
           <div className="title-row">
             <h1 className="screen-title">{item.title}</h1>
+            <button
+              className={`fav-toggle ${item.favorite ? 'is-on' : ''}`}
+              onClick={toggleFavorite}
+              disabled={favBusy}
+              aria-pressed={item.favorite}
+              aria-label={item.favorite ? 'お気に入りから外す' : 'お気に入りにする'}
+            >
+              {item.favorite ? '★' : '☆'}
+            </button>
             <button
               className="btn-small is-primary"
               onClick={() => {

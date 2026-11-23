@@ -35,6 +35,7 @@ type BackupItem = {
   shelf_info?: { name: string; icon: string; style: string } | null; // 009 以降：置いてある棚
   source?: string; // 誰の言葉・どこで見たか
   url?: string; // リンク（010 以降）
+  favorite?: boolean; // ★（011 以降）
   images: BackupImage[];
 };
 
@@ -82,7 +83,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
     const { data, error } = await supabase
       .from('items')
       .select(
-        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, shelf_id, shelves(name, icon, style), item_images(storage_path, position, mime, width, height, regions)',
+        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), item_images(storage_path, position, mime, width, height, regions)',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -250,6 +251,7 @@ async function restoreOne(
     shelf_id: shelfId,
     source: item.source ?? '',
     url: item.url ?? '',
+    favorite: item.favorite ?? false,
   };
   // 元の番号のまま戻す（2回目の読み込みで二重にならないように）。
   // 別の人がすでに同じ番号を使っていたときだけ、新しい番号で入れる

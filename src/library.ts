@@ -170,6 +170,7 @@ export type ItemSummary = {
   source: string; // 誰の言葉・どこで見たか
   url: string; // リンク（空 = なし）
   isNote: boolean; // 自分で書いたノート（スクショではない）
+  favorite: boolean; // ★お気に入り
 };
 
 // ---------------------------------------------------------------------
@@ -244,6 +245,7 @@ type Row = {
   source: string;
   url: string;
   source_type: string;
+  favorite: boolean;
 };
 
 function firstImage(row: Row): string | null {
@@ -265,10 +267,11 @@ function toSummary(row: Row): ItemSummary {
     source: row.source ?? '',
     url: row.url ?? '',
     isNote: row.source_type === 'note',
+    favorite: row.favorite ?? false,
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -277,6 +280,7 @@ export async function listItems(
   query = '',
   onlyUnsorted = false,
   shelfId: string | null = null,
+  onlyFavorite = false,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -285,6 +289,7 @@ export async function listItems(
   // 整理待ち：文字を読まずに画像だけで保存したもの
   if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null);
   if (shelfId) request = request.eq('shelf_id', shelfId);
+  if (onlyFavorite) request = request.eq('favorite', true);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -373,6 +378,7 @@ export type ItemPatch = {
   url?: string;
   /** ノートの文章（ノートは「読み取った文章」と「手直し」を分けないので、そのまま置き換える） */
   noteText?: string;
+  favorite?: boolean;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -400,13 +406,14 @@ export async function appendReadText(item: ItemDetail, added: string): Promise<v
 }
 
 export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
-  const values: Record<string, string | null> = {};
+  const values: Record<string, string | boolean | null> = {};
   if (patch.title !== undefined) values.title = patch.title.trim() || 'タイトルなし';
   if (patch.text !== undefined) values.edited_text = patch.text.value === patch.text.ocrText ? null : patch.text.value;
   if (patch.memo !== undefined) values.memo = patch.memo.trim();
   if (patch.source !== undefined) values.source = patch.source.trim();
   if (patch.shelfId !== undefined) values.shelf_id = patch.shelfId;
   if (patch.url !== undefined) values.url = normalizeUrl(patch.url);
+  if (patch.favorite !== undefined) values.favorite = patch.favorite;
   if (patch.noteText !== undefined) {
     values.ocr_text = patch.noteText;
     values.edited_text = null;
@@ -511,6 +518,19 @@ export async function deleteImage(imageId: string, path: string): Promise<void> 
   if (removeError) throw new Error(toJapaneseError(removeError.message));
   const { error } = await supabase.from('item_images').delete().eq('id', imageId);
   if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** ★お気に入り（最近さわった順に、少しだけ。ホーム用）と全部の件数 */
+export async function listFavorites(limit = 5): Promise<{ items: ItemSummary[]; total: number }> {
+  const { data, error, count } = await supabase
+    .from('items')
+    .select(COLUMNS, { count: 'exact' })
+    .is('deleted_at', null)
+    .eq('favorite', true)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(toJapaneseError(error.message));
+  return { items: (data as Row[]).map(toSummary), total: count ?? 0 };
 }
 
 /** 棚ごとの件数（棚の id → 件数） */

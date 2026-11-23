@@ -15,6 +15,7 @@ import {
   cleanupExpiredGuests,
   countByShelf,
   countUnsorted,
+  listFavorites,
   listShelves,
   pickTodayWord,
   type ItemSummary,
@@ -33,7 +34,7 @@ import {
 type Screen =
   | { name: 'home' }
   | { name: 'import' }
-  | { name: 'library' }
+  | { name: 'library'; filter?: 'all' | 'fav' | 'unsorted' }
   | { name: 'item'; id: string; back?: Screen }
   | { name: 'shelf'; shelf: Shelf }
   | { name: 'shelves' }
@@ -137,6 +138,7 @@ export default function App() {
             onShelf={(shelf) => setScreen({ name: 'shelf', shelf })}
             onManageShelves={() => setScreen({ name: 'shelves' })}
             onNote={() => setScreen({ name: 'note' })}
+            onFavorites={() => setScreen({ name: 'library', filter: 'fav' })}
             onTrash={() => setScreen({ name: 'trash' })}
             onBackup={() => setScreen({ name: 'backup' })}
           />
@@ -146,9 +148,11 @@ export default function App() {
       case 'library':
         return (
           <LibraryScreen
+            key={screen.filter ?? 'all'}
+            initialFilter={screen.filter}
             onBack={home}
             onImport={importShot}
-            onOpen={(id) => setScreen({ name: 'item', id })}
+            onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
             onTrash={() => setScreen({ name: 'trash' })}
           />
         );
@@ -223,11 +227,12 @@ type HomeProps = {
   onShelf: (shelf: Shelf) => void;
   onManageShelves: () => void;
   onNote: () => void;
+  onFavorites: () => void;
   onTrash: () => void;
   onBackup: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onFavorites, onTrash, onBackup }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -240,6 +245,10 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   const [shelves, setShelves] = useState<Shelf[] | null>(null);
   const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
   const [unsortedCount, setUnsortedCount] = useState(0);
+  const [favorites, setFavorites] = useState<{ items: ItemSummary[]; total: number }>({ items: [], total: 0 });
+  useEffect(() => {
+    listFavorites(5).then(setFavorites).catch(() => setFavorites({ items: [], total: 0 }));
+  }, [dataVersion]);
   useEffect(() => {
     listShelves()
       .then((list) => {
@@ -406,6 +415,27 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           </ul>
         )}
       </div>
+
+      {favorites.items.length > 0 && (
+        <div className="card fav-card">
+          <h2 className="notices-title">★ お気に入り</h2>
+          <ul className="fav-list">
+            {favorites.items.map((f) => (
+              <li key={f.id}>
+                <button className="fav-item" onClick={() => onOpen(f.id)}>
+                  <span className="fav-mark">★</span>
+                  <span className="fav-item-title">{f.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {favorites.total > favorites.items.length && (
+            <button className="btn-text fav-more" onClick={onFavorites}>
+              すべて見る（{favorites.total}件）
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="tiles">
         <button className="tile is-ready tile-library" onClick={onLibrary}>

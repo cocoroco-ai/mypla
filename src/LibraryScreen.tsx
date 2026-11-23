@@ -10,10 +10,11 @@ type Props = {
   onImport: () => void;
   onTrash: () => void;
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
+  initialFilter?: 'all' | 'fav' | 'unsorted';
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
-export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf }: Props) {
+export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter }: Props) {
   const shelfInfo = shelf ?? null;
   const isWords = shelf?.style === 'cards';
   // ライブラリーで、記事に棚の印を付けるため
@@ -33,7 +34,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   const [query, setQuery] = useState(''); // 実際に検索した言葉
   const [trashCount, setTrashCount] = useState(0);
   // 整理待ち（画像だけで保存して、まだ文字にしていないもの）だけを表示するか
-  const [unsorted, setUnsorted] = useState(false);
+  // 表示の絞り込み：すべて／★お気に入り／整理待ち
+  const [filter, setFilter] = useState<'all' | 'fav' | 'unsorted'>(initialFilter ?? 'all');
+  const unsorted = filter === 'unsorted';
   const [unsortedCount, setUnsortedCount] = useState(0);
   // まとめるモード：チェックを付けた記事を1つにまとめる
   const [merging, setMerging] = useState(false);
@@ -84,7 +87,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null);
+      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav');
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -106,7 +109,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
   useEffect(() => {
     load(0, query);
-  }, [query, unsorted]);
+  }, [query, filter]);
 
   useEffect(() => {
     countTrash().then(setTrashCount).catch(() => setTrashCount(0));
@@ -230,13 +233,19 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         )}
       </div>
 
-      {!shelf && (unsortedCount > 0 || unsorted) && (
+      {!shelf && (
         <div className="segmented library-filter" role="group" aria-label="表示する記事">
-          <button className={!unsorted ? 'is-on' : ''} onClick={() => setUnsorted(false)}>すべて</button>
-          <button className={unsorted ? 'is-on' : ''} onClick={() => setUnsorted(true)}>
-            整理待ち（{unsortedCount}件）
-          </button>
+          <button className={filter === 'all' ? 'is-on' : ''} onClick={() => setFilter('all')}>すべて</button>
+          <button className={filter === 'fav' ? 'is-on' : ''} onClick={() => setFilter('fav')}>★ お気に入り</button>
+          {(unsortedCount > 0 || unsorted) && (
+            <button className={unsorted ? 'is-on' : ''} onClick={() => setFilter('unsorted')}>
+              整理待ち {unsortedCount}
+            </button>
+          )}
         </div>
+      )}
+      {filter === 'fav' && (
+        <p className="hint">★を付けた記事です。記事を開いて、タイトル横の☆を押すと付けられます。</p>
       )}
       {unsorted && (
         <p className="hint">
@@ -333,7 +342,10 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 )}
               </span>
               <span className="item-main">
-                <span className="item-title">{highlight(item.title, words)}</span>
+                <span className="item-title">
+                  {item.favorite && <span className="fav-mark">★</span>}
+                  {highlight(item.title, words)}
+                </span>
                 <span className="item-body">{highlight(snippet(item, words), words)}</span>
                 <span className="item-meta">
                   {formatDate(item.createdAt)}

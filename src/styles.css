@@ -612,3 +612,21 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .view-extra { display: grid; gap: 8px; }
 .view-memo { margin: 0; white-space: pre-wrap; color: var(--text); line-height: 1.7; }
 .view-back { margin: 0 0 8px; }
+
+/* ★お気に入り */
+.fav-toggle {
+  flex: 0 0 auto; width: 44px; height: 44px; margin-top: 6px; border-radius: 22px; border: 1px solid var(--line);
+  background: var(--surface); color: #c9a227; font-size: 24px; line-height: 1; padding: 0; cursor: pointer;
+}
+.fav-toggle.is-on { background: #fff6d6; border-color: #e8c95a; }
+.fav-mark { color: #c9a227; margin-right: 4px; }
+.fav-card { margin: 0 0 16px; }
+.fav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fav-item {
+  width: 100%; display: flex; gap: 8px; align-items: center; padding: 10px 12px; min-height: 44px;
+  text-align: left; font: inherit; color: var(--text); background: #fffbea; border: 1px solid #f3e3a6;
+  border-radius: 10px; cursor: pointer;
+}
+.fav-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-more { margin-top: 6px; }
+.fav-list { grid-template-columns: minmax(0, 1fr); } .fav-list li { min-width: 0; } .fav-item { overflow: hidden; }
