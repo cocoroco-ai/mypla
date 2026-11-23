@@ -165,10 +165,12 @@ export type ItemSummary = {
   memo: string;
   createdAt: string;
   imagePath: string | null;
+  imageCount: number;
 };
 
 export type ItemDetail = ItemSummary & {
   imagePaths: string[]; // すべての画像（並び順）
+  images: { id: string; path: string }[]; // 同じ並びで、画像の番号つき
   ocrText: string;
   editedText: string | null;
   ocrConfidence: number | null;
@@ -184,7 +186,7 @@ type Row = {
   ocr_confidence: number | null;
   created_at: string;
   updated_at: string;
-  item_images: { storage_path: string; position: number }[] | null;
+  item_images: { id: string; storage_path: string; position: number }[] | null;
 };
 
 function firstImage(row: Row): string | null {
@@ -201,10 +203,11 @@ function toSummary(row: Row): ItemSummary {
     memo: row.memo,
     createdAt: row.created_at,
     imagePath: firstImage(row),
+    imageCount: row.item_images?.length ?? 0,
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(storage_path, position)';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position)';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -262,6 +265,9 @@ export async function getItem(id: string): Promise<ItemDetail> {
   return {
     ...toSummary(row),
     imagePaths: [...(row.item_images ?? [])].sort((a, b) => a.position - b.position).map((i) => i.storage_path),
+    images: [...(row.item_images ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((i) => ({ id: i.id, path: i.storage_path })),
     ocrText: row.ocr_text,
     editedText: row.edited_text,
     ocrConfidence: row.ocr_confidence,
@@ -410,6 +416,21 @@ export async function mergeItems(items: ItemSummary[]): Promise<string> {
   const { data, error } = await supabase.rpc('merge_items', { ids: ordered.map((i) => i.id), new_title: title });
   if (error) throw new Error(toJapaneseError(error.message));
   return data as string;
+}
+
+/** 記事の中の1枚を、別の記事（整理待ち）として切り離す。戻り値：新しい記事の id */
+export async function splitImage(imageId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('split_image', { image_id: imageId });
+  if (error) throw new Error(toJapaneseError(error.message));
+  return data as string;
+}
+
+/** 記事の中の1枚を完全に削除する（元に戻せない） */
+export async function deleteImage(imageId: string, path: string): Promise<void> {
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove([path]);
+  if (removeError) throw new Error(toJapaneseError(removeError.message));
+  const { error } = await supabase.from('item_images').delete().eq('id', imageId);
+  if (error) throw new Error(toJapaneseError(error.message));
 }
 
 /** 整理待ち（画像だけで保存して、まだ文字にしていないもの）の件数 */

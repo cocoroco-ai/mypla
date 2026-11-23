@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { TRASH_DAYS, addImagesToItem, appendReadText, formatDate, getItem, imageUrls, setReadText, trashItem, updateItem, type ItemDetail } from './library';
+import ImageViewer from './ImageViewer';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, imageUrls, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -14,6 +15,9 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
   const imageUrl = imageUrlList[0] ?? null;
   const addRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [notice, setNotice] = useState('');
   const [showOcr, setShowOcr] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -79,6 +83,38 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
     } finally {
       setReading(null);
       setAdding(false);
+    }
+  }
+
+  /** 1枚を別の記事（整理待ち）として切り離す、または削除する */
+  async function removeImage(index: number, how: 'split' | 'delete') {
+    if (!item) return;
+    const image = item.images[index];
+    if (!image) return;
+    const ok =
+      how === 'split'
+        ? window.confirm(`${index + 1}枚目を、この記事から外して別の記事（整理待ち）にしますか？
+画像は消えません。`)
+        : window.confirm(`${index + 1}枚目の画像を完全に削除しますか？
+元に戻せません。`);
+    if (!ok) return;
+    setError('');
+    setNotice('');
+    setImageBusy(true);
+    try {
+      if (how === 'split') await splitImage(image.id);
+      else await deleteImage(image.id, image.path);
+      setViewIndex(null);
+      const detail = await reload();
+      await loadImages(detail);
+      setNotice(
+        (how === 'split' ? '画像を外して、別の記事（整理待ち）にしました。' : '画像を削除しました。') +
+          (detail.body ? '文章はそのまま残っています。必要なら「全部の画像から文字を読み取り直す」で作り直せます。' : ''),
+      );
+    } catch (e) {
+      setError(`うまくいきませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setImageBusy(false);
     }
   }
 
@@ -274,12 +310,51 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
           <div className="card">
             <h2 className="card-title">元の画像{imageUrlList.length > 1 ? `（${imageUrlList.length}枚）` : ''}</h2>
+            {notice && <p className="notice" role="status">{notice}</p>}
             {imageUrlList.map((url, i) => (
-              <a key={url} href={url} target="_blank" rel="noreferrer" className="item-image-link">
-                {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
-                <img className="item-image" src={url} alt={`保存した元の画像（${i + 1}枚目）`} />
-              </a>
+              <div key={url} className="item-image-block">
+                <button className="item-image-link" onClick={() => setViewIndex(i)} aria-label={`${i + 1}枚目を大きく見る`}>
+                  {imageUrlList.length > 1 && <span className="item-image-no">{i + 1}枚目</span>}
+                  <img className="item-image" src={url} alt={`保存した元の画像（${i + 1}枚目）`} />
+                </button>
+                {imageUrlList.length > 1 && (
+                  <div className="image-actions">
+                    <button className="btn-small" onClick={() => removeImage(i, 'split')} disabled={imageBusy}>
+                      この画像を外す（別の記事に）
+                    </button>
+                    <button className="btn-danger-small" onClick={() => removeImage(i, 'delete')} disabled={imageBusy}>
+                      削除
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
+            {viewIndex !== null && imageUrlList[viewIndex] && (
+              <ImageViewer
+                src={imageUrlList[viewIndex]}
+                caption={imageUrlList.length > 1 ? `${viewIndex + 1} / ${imageUrlList.length}枚目` : item.title}
+                onClose={() => setViewIndex(null)}
+                actions={
+                  imageUrlList.length > 1 ? (
+                    <>
+                      <button className="btn-secondary" onClick={() => setViewIndex(Math.max(0, viewIndex - 1))} disabled={viewIndex === 0}>
+                        ← 前
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setViewIndex(Math.min(imageUrlList.length - 1, viewIndex + 1))}
+                        disabled={viewIndex === imageUrlList.length - 1}
+                      >
+                        次 →
+                      </button>
+                      <button className="btn-secondary" onClick={() => removeImage(viewIndex, 'split')} disabled={imageBusy}>
+                        この画像を外す
+                      </button>
+                    </>
+                  ) : undefined
+                }
+              />
+            )}
             {imageUrlList.length > 0 && <p className="hint">画像を押すと、大きく表示できます。</p>}
             <input
               ref={addRef}

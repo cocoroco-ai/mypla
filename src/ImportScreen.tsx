@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { recognize, type OcrProgress, type OcrResult, type Region, type RemovedLine } from './ocr';
 import RegionSelector from './RegionSelector';
+import ImageViewer from './ImageViewer';
 import { saveImagesOnly, saveItem } from './library';
 
 type Result = OcrResult;
@@ -14,6 +15,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
   const [extraFiles, setExtraFiles] = useState<{ file: File; url: string }[]>([]);
   // まとめて取り込み（画像だけ・1枚ずつ別の記事）
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+  const [viewExtra, setViewExtra] = useState<number | null>(null);
   const [bulkResult, setBulkResult] = useState<{ saved: number; stoppedReason: string | null } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
@@ -376,13 +378,15 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
           )}
           <div className="extra-images">
             <p className="extra-title">
-              続きのスクショ{extraFiles.length > 0 ? `（${extraFiles.length + 1}枚で1件にまとめます）` : ''}
+              続きのスクショ{extraFiles.length > 0 ? `（${extraFiles.length + 1}枚で1件にまとめます。画像を押すと拡大）` : ''}
             </p>
             {extraFiles.length > 0 && (
               <ul className="extra-list">
                 {extraFiles.map((x, i) => (
                   <li key={x.url}>
-                    <img src={x.url} alt={`${i + 2}枚目`} />
+                    <button className="extra-zoom" onClick={() => setViewExtra(i)} aria-label={`${i + 2}枚目を大きく見る`}>
+                      <img src={x.url} alt={`${i + 2}枚目`} />
+                    </button>
                     <span className="extra-no">{i + 2}</span>
                     <button className="extra-remove" onClick={() => removeExtra(i)} disabled={busy} aria-label={`${i + 2}枚目を外す`}>
                       ×
@@ -390,6 +394,24 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
                   </li>
                 ))}
               </ul>
+            )}
+            {viewExtra !== null && extraFiles[viewExtra] && (
+              <ImageViewer
+                src={extraFiles[viewExtra].url}
+                caption={`${viewExtra + 2}枚目`}
+                onClose={() => setViewExtra(null)}
+                actions={
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      removeExtra(viewExtra);
+                      setViewExtra(null);
+                    }}
+                  >
+                    この画像は外す
+                  </button>
+                }
+              />
             )}
             <input
               ref={moreRef}

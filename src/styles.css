@@ -452,3 +452,40 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
   color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 15px;
 }
 .item-row.is-picked .pick-mark { background: var(--blue); }
+
+/* 画像の拡大表示 */
+.viewer {
+  position: fixed; inset: 0; z-index: 100; display: grid; grid-template-rows: auto 1fr auto;
+  background: rgba(10, 20, 18, 0.92); color: #fff;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.viewer-top { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+.viewer-caption { flex: 1; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewer-close {
+  width: 44px; height: 44px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, 0.18);
+  color: #fff; font-size: 26px; line-height: 44px; padding: 0;
+}
+.viewer-body { overflow: auto; display: grid; place-items: start center; padding: 0 8px; touch-action: pan-x pan-y pinch-zoom; }
+.viewer-body img { max-width: 100%; height: auto; border-radius: 6px; background: #fff; }
+.viewer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 12px 14px; }
+.viewer-actions button { min-height: 44px; }
+
+/* まとめる前の確認 */
+.review-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
+.review-item {
+  display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+}
+.review-thumb { position: relative; padding: 0; border: 0; background: var(--bg); border-radius: 8px; overflow: hidden; width: 120px; height: 180px; cursor: zoom-in; }
+.review-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.review-no {
+  position: absolute; left: 6px; top: 6px; min-width: 24px; height: 24px; border-radius: 12px;
+  background: var(--blue); color: #fff; font-size: 13px; font-weight: 700; line-height: 24px; text-align: center;
+}
+.review-main { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.review-main .btn-small { justify-self: start; }
+.item-thumb.is-zoomable { cursor: zoom-in; outline: 2px solid var(--blue-soft); }
+.item-image-block { margin-bottom: 14px; }
+button.item-image-link { padding: 0; border: 0; background: none; width: 100%; cursor: zoom-in; margin-bottom: 6px; }
+.image-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.extra-zoom { padding: 0; border: 0; background: none; display: block; cursor: zoom-in; }

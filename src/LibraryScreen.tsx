@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import ImageViewer from './ImageViewer';
 import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, searchWords, type ItemSummary } from './library';
 
 const PAGE = 20;
@@ -27,6 +28,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   const [merging, setMerging] = useState(false);
   const [picked, setPicked] = useState<ItemSummary[]>([]);
   const [mergeBusy, setMergeBusy] = useState(false);
+  // まとめる前の確認画面（画像を大きく見て、関係ないものを外せる）
+  const [reviewing, setReviewing] = useState(false);
+  const [viewing, setViewing] = useState<ItemSummary | null>(null);
 
   function togglePick(item: ItemSummary) {
     setPicked((list) => (list.some((x) => x.id === item.id) ? list.filter((x) => x.id !== item.id) : [...list, item]));
@@ -34,16 +38,20 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
 
   function stopMerging() {
     setMerging(false);
+    setReviewing(false);
     setPicked([]);
+  }
+
+  function unpick(item: ItemSummary) {
+    setPicked((list) => list.filter((x) => x.id !== item.id));
+    setViewing(null);
   }
 
   async function runMerge() {
     if (picked.length < 2) return;
-    const ordered = [...picked].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const lines = ordered.map((x, i) => `${i + 1}. ${x.title}`).join('\n');
     const message =
-      `次の${picked.length}件を、古い順に1つの記事にまとめますか？\n\n${lines}\n\n` +
-      '画像・文章・メモはすべて1件目につながり、ほかの記事はなくなります（元には戻せません）。';
+      `${picked.length}件を1つの記事にまとめます。よろしいですか？\n` +
+      '（まとめた後でも、記事の画面で画像を1枚ずつ外せます）';
     if (!window.confirm(message)) return;
     setMergeBusy(true);
     setError('');
@@ -96,6 +104,63 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   const words = searchWords(query);
   const searching = words.length > 0;
 
+  if (reviewing) {
+    const ordered = [...picked].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (
+      <section>
+        <button className="link-back" onClick={() => setReviewing(false)} disabled={mergeBusy}>← 選び直す</button>
+        <h1 className="screen-title">まとめる前の確認</h1>
+        <p className="hint">
+          この順番（古い順）で1つの記事になります。画像を押すと大きく見られます。関係ないものは「外す」で除いてください。
+        </p>
+        {error && <p className="error" role="alert">{error}</p>}
+        <ul className="review-list">
+          {ordered.map((item, i) => (
+            <li key={item.id} className="review-item">
+              <button className="review-thumb" onClick={() => setViewing(item)} aria-label={`${item.title} を大きく見る`}>
+                {item.imagePath && urls[item.imagePath] ? (
+                  <img src={urls[item.imagePath]} alt="" />
+                ) : (
+                  <span className="thumb-empty" aria-hidden="true">🖼️</span>
+                )}
+                <span className="review-no">{i + 1}</span>
+              </button>
+              <div className="review-main">
+                <span className="item-title">{item.title}</span>
+                <span className="item-meta">
+                  {formatDate(item.createdAt)}
+                  {item.imageCount > 1 && `・画像${item.imageCount}枚`}
+                </span>
+                <button className="btn-small" onClick={() => unpick(item)} disabled={mergeBusy}>
+                  外す
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {viewing && viewing.imagePath && urls[viewing.imagePath] && (
+          <ImageViewer
+            src={urls[viewing.imagePath]}
+            caption={viewing.title}
+            onClose={() => setViewing(null)}
+            actions={
+              <>
+                <button className="btn-secondary" onClick={() => unpick(viewing)}>これは外す</button>
+                <button className="btn-secondary" onClick={() => setViewing(null)}>このまま</button>
+              </>
+            }
+          />
+        )}
+        <div className="bottom-action">
+          <button className="btn-primary btn-large" onClick={runMerge} disabled={picked.length < 2 || mergeBusy}>
+            {mergeBusy ? 'まとめています…' : picked.length < 2 ? '2件以上必要です（選び直してください）' : `この${picked.length}件を1つにまとめる`}
+          </button>
+          <button className="btn-text" onClick={stopMerging} disabled={mergeBusy}>まとめるのをやめる</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
@@ -129,7 +194,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
 
       <div className="library-tools">
         {merging ? (
-          <p className="hint">まとめたい記事を、2件以上タップして選んでください。古い順に1つになります。</p>
+          <p className="hint">まとめたい記事を、2件以上タップして選んでください。画像を押すと大きく見られます。</p>
         ) : (
           <button className="btn-small" onClick={() => setMerging(true)} disabled={total < 2}>
             記事をまとめる
@@ -195,7 +260,17 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
                   {picked.some((x) => x.id === item.id) ? '✓' : ''}
                 </span>
               )}
-              <span className="item-thumb">
+              <span
+                className={`item-thumb ${merging ? 'is-zoomable' : ''}`}
+                onClick={
+                  merging
+                    ? (e) => {
+                        e.stopPropagation(); // 選ぶ状態のときは、画像を押すと拡大（選ぶ・外すは画像の外を押す）
+                        setViewing(item);
+                      }
+                    : undefined
+                }
+              >
                 {item.imagePath && urls[item.imagePath] ? (
                   <img src={urls[item.imagePath]} alt="" loading="lazy" />
                 ) : (
@@ -223,6 +298,25 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
         </button>
       )}
 
+      {!reviewing && viewing && viewing.imagePath && urls[viewing.imagePath] && (
+        <ImageViewer
+          src={urls[viewing.imagePath]}
+          caption={viewing.title}
+          onClose={() => setViewing(null)}
+          actions={
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                togglePick(viewing);
+                setViewing(null);
+              }}
+            >
+              {picked.some((x) => x.id === viewing.id) ? '選ぶのをやめる' : 'これを選ぶ'}
+            </button>
+          }
+        />
+      )}
+
       <button className="trash-link" onClick={onTrash}>
         ゴミ箱{trashCount > 0 ? `（${trashCount}件）` : ''}を見る
       </button>
@@ -230,8 +324,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
       <div className="bottom-action">
         {merging ? (
           <>
-            <button className="btn-primary btn-large" onClick={runMerge} disabled={picked.length < 2 || mergeBusy}>
-              {mergeBusy ? 'まとめています…' : picked.length < 2 ? '2件以上選んでください' : `選んだ${picked.length}件を1つにまとめる`}
+            <button
+              className="btn-primary btn-large"
+              onClick={() => { setReviewing(true); window.scrollTo({ top: 0 }); }}
+              disabled={picked.length < 2}
+            >
+              {picked.length < 2 ? '2件以上選んでください' : `選んだ${picked.length}件を確認してまとめる`}
             </button>
             <button className="btn-text" onClick={stopMerging} disabled={mergeBusy}>やめる</button>
           </>
