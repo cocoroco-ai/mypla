@@ -164,9 +164,17 @@ export default function ItemScreen({ id, onBack }: { id: string; onBack: () => v
     }
   }
 
-  /** 画像だけで保存した記事の文字を、あとから読み取る（画像全体を読む） */
+  /** 画像だけで保存した記事の文字を、あとから読み取る（画像全体を読む）。文字のある記事では「読み取り直し」 */
   async function readImageText() {
     if (!item || imageUrlList.length === 0) return;
+    if (
+      !imageOnly &&
+      !window.confirm(
+        `全部の画像（${imageUrlList.length}枚）から文字を読み取り直しますか？
+今の文章は、読み取り直した文章に置き換わります${item.edited ? '（手直しした内容も消えます）' : ''}。`,
+      )
+    )
+      return;
     setError('');
     setReading({ label: '準備中', ratio: 0 });
     try {
@@ -289,6 +297,15 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 ? '足した画像は、この記事の後ろに並びます。'
                 : '足した画像も文字を読み取って、文章の最後につなげます。'}
             </p>
+            {!imageOnly && imageUrlList.length > 0 && (
+              reading ? (
+                <p className="progress-label">{reading.label}…</p>
+              ) : (
+                <button className="btn-text" onClick={readImageText} disabled={adding}>
+                  全部の画像から文字を読み取り直す
+                </button>
+              )
+            )}
           </div>
 
           <button className="btn-danger" onClick={moveToTrash}>

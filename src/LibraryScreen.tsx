@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, searchWords, type ItemSummary } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, searchWords, type ItemSummary } from './library';
 
 const PAGE = 20;
 
@@ -23,6 +23,40 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
   // 整理待ち（画像だけで保存して、まだ文字にしていないもの）だけを表示するか
   const [unsorted, setUnsorted] = useState(false);
   const [unsortedCount, setUnsortedCount] = useState(0);
+  // まとめるモード：チェックを付けた記事を1つにまとめる
+  const [merging, setMerging] = useState(false);
+  const [picked, setPicked] = useState<ItemSummary[]>([]);
+  const [mergeBusy, setMergeBusy] = useState(false);
+
+  function togglePick(item: ItemSummary) {
+    setPicked((list) => (list.some((x) => x.id === item.id) ? list.filter((x) => x.id !== item.id) : [...list, item]));
+  }
+
+  function stopMerging() {
+    setMerging(false);
+    setPicked([]);
+  }
+
+  async function runMerge() {
+    if (picked.length < 2) return;
+    const ordered = [...picked].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const lines = ordered.map((x, i) => `${i + 1}. ${x.title}`).join('\n');
+    const message =
+      `次の${picked.length}件を、古い順に1つの記事にまとめますか？\n\n${lines}\n\n` +
+      '画像・文章・メモはすべて1件目につながり、ほかの記事はなくなります（元には戻せません）。';
+    if (!window.confirm(message)) return;
+    setMergeBusy(true);
+    setError('');
+    try {
+      const id = await mergeItems(picked);
+      stopMerging();
+      onOpen(id);
+    } catch (e) {
+      setError(`まとめられませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setMergeBusy(false);
+    }
+  }
   const requestNo = useRef(0); // 速く打ったときに、古い検索結果で上書きしないための番号
 
   async function load(offset: number, q: string) {
@@ -93,6 +127,16 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
         )}
       </form>
 
+      <div className="library-tools">
+        {merging ? (
+          <p className="hint">まとめたい記事を、2件以上タップして選んでください。古い順に1つになります。</p>
+        ) : (
+          <button className="btn-small" onClick={() => setMerging(true)} disabled={total < 2}>
+            記事をまとめる
+          </button>
+        )}
+      </div>
+
       {(unsortedCount > 0 || unsorted) && (
         <div className="segmented library-filter" role="group" aria-label="表示する記事">
           <button className={!unsorted ? 'is-on' : ''} onClick={() => setUnsorted(false)}>すべて</button>
@@ -141,7 +185,16 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
       <ul className="item-list">
         {items.map((item) => (
           <li key={item.id}>
-            <button className="item-row" onClick={() => onOpen(item.id)}>
+            <button
+              className={`item-row ${merging ? 'is-picking' : ''} ${picked.some((x) => x.id === item.id) ? 'is-picked' : ''}`}
+              onClick={() => (merging ? togglePick(item) : onOpen(item.id))}
+              aria-pressed={merging ? picked.some((x) => x.id === item.id) : undefined}
+            >
+              {merging && (
+                <span className="pick-mark" aria-hidden="true">
+                  {picked.some((x) => x.id === item.id) ? '✓' : ''}
+                </span>
+              )}
               <span className="item-thumb">
                 {item.imagePath && urls[item.imagePath] ? (
                   <img src={urls[item.imagePath]} alt="" loading="lazy" />
@@ -175,9 +228,18 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash }: Pro
       </button>
 
       <div className="bottom-action">
-        <button className="btn-primary btn-large" onClick={onImport}>
-          ＋ スクショを取り込む
-        </button>
+        {merging ? (
+          <>
+            <button className="btn-primary btn-large" onClick={runMerge} disabled={picked.length < 2 || mergeBusy}>
+              {mergeBusy ? 'まとめています…' : picked.length < 2 ? '2件以上選んでください' : `選んだ${picked.length}件を1つにまとめる`}
+            </button>
+            <button className="btn-text" onClick={stopMerging} disabled={mergeBusy}>やめる</button>
+          </>
+        ) : (
+          <button className="btn-primary btn-large" onClick={onImport}>
+            ＋ スクショを取り込む
+          </button>
+        )}
       </div>
     </section>
   );

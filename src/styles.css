@@ -441,3 +441,14 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .usage-bar > div { height: 100%; background: var(--mint-strong); }
 .usage-bar.is-warn > div { background: #e0b04a; }
 .usage-bar.is-danger > div { background: var(--error); }
+
+/* 記事をまとめる */
+.library-tools { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.library-tools .hint { margin: 0; }
+.item-row.is-picking { grid-template-columns: 28px 72px 1fr; }
+.item-row.is-picked { border-color: var(--blue); background: var(--blue-soft); }
+.pick-mark {
+  width: 26px; height: 26px; align-self: center; border-radius: 50%; border: 2px solid var(--blue);
+  color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 15px;
+}
+.item-row.is-picked .pick-mark { background: var(--blue); }
