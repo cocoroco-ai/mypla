@@ -35,6 +35,9 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
   const [usedRegions, setUsedRegions] = useState<Region[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // 囲んだ部分だけの画像で保存する（初めはオフ＝元の画像を全部残す）
+  const [cropOnly, setCropOnly] = useState(false);
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
 
   const edited = result !== null && text !== ocrText;
 
@@ -63,6 +66,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
     setExtraFiles([]);
+    setCropOnly(false);
     setResult(null);
     setText('');
     setOcrText('');
@@ -77,6 +81,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
 
   /** 続けて別のスクショを取り込むために、最初の状態に戻す */
   function reset() {
+    setCropOnly(false);
     setFile(null);
     setExtraFiles([]);
     setBulkResult(null);
@@ -137,7 +142,17 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     setError(null);
     setSaving(true);
     try {
-      await saveItem({ title, ocrText, text, confidence: result.confidence, files: allFiles, regions: usedRegions });
+      // 「囲んだ部分だけ」なら、1枚目を切り抜いた画像に差し替える（範囲はもう画像そのものなので記録しない）
+      const useCrop = cropOnly && usedRegions && usedRegions.length > 0;
+      const files = useCrop ? [await cropToRegions(file, usedRegions), ...allFiles.slice(1)] : allFiles;
+      await saveItem({
+        title,
+        ocrText,
+        text,
+        confidence: result.confidence,
+        files,
+        regions: useCrop ? null : usedRegions,
+      });
       setSaved(true);
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -227,6 +242,25 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
   }
 
   const busy = progress !== null || saving;
+
+  // チェックしたら、切り抜いた仕上がりを小さく見せる
+  useEffect(() => {
+    if (!cropOnly || !file || !usedRegions || usedRegions.length === 0) {
+      setCropPreview(null);
+      return;
+    }
+    let url: string | null = null;
+    let cancelled = false;
+    cropToRegions(file, usedRegions).then((f) => {
+      if (cancelled) return;
+      url = URL.createObjectURL(f);
+      setCropPreview(url);
+    });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [cropOnly, file, usedRegions]);
 
   // 「範囲を指で囲む」にしたら、画像全体が見える位置までスクロールする（途中でスクロールしなくて済むように）
   useEffect(() => {
@@ -531,6 +565,21 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
+      {result && usedRegions && usedRegions.length > 0 && (
+        <div className="card crop-card">
+          <label className="crop-check">
+            <input type="checkbox" checked={cropOnly} onChange={(e) => setCropOnly(e.target.checked)} />
+            <span>囲んだ部分だけの画像で保存する</span>
+          </label>
+          <p className="hint">
+            {cropOnly
+              ? '囲まなかった部分の画像は保存されません。2か所以上なら、上から順に縦につなげた1枚になります。'
+              : 'チェックしなければ、元の画像を全部保存します（あとで読み間違いを確かめられます）。'}
+          </p>
+          {cropOnly && cropPreview && <img className="crop-preview" src={cropPreview} alt="保存される画像（囲んだ部分）" />}
+        </div>
+      )}
+
       {file && progress === null && (
         <div className="bottom-action">
           {result ? (
@@ -564,6 +613,44 @@ const TRY_SAMPLES = [
   { src: '/samples/try-1.jpg', file: 'mihon-post.jpg', name: '見本A：SNSの投稿', note: '「範囲を指で囲む」で本文だけ読むのがおすすめ' },
   { src: '/samples/try-2.jpg', file: 'mihon-list.jpg', name: '見本B：持ち物リスト', note: '「画像全体を読む」でそのまま読めます' },
 ];
+
+/**
+ * 囲んだ範囲だけを切り抜いた画像を作る。2か所以上なら、上から順に縦につなげた1枚にする（間に少し白い余白）
+ */
+async function cropToRegions(file: File, regions: Region[]): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const W = bitmap.width;
+    const H = bitmap.height;
+    const parts = [...regions]
+      .sort((a, b) => a.y - b.y)
+      .map((r) => ({
+        sx: Math.round(r.x * W),
+        sy: Math.round(r.y * H),
+        sw: Math.max(1, Math.round(r.w * W)),
+        sh: Math.max(1, Math.round(r.h * H)),
+      }));
+    const GAP = parts.length > 1 ? 16 : 0;
+    const width = Math.max(...parts.map((p) => p.sw));
+    const height = parts.reduce((sum, p) => sum + p.sh, 0) + GAP * (parts.length - 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+    let y = 0;
+    for (const p of parts) {
+      ctx.drawImage(bitmap, p.sx, p.sy, p.sw, p.sh, 0, y, p.sw, p.sh);
+      y += p.sh + GAP;
+    }
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('切り抜いた画像を作れませんでした');
+    return new File([blob], 'crop.png', { type: 'image/png' });
+  } finally {
+    bitmap.close();
+  }
+}
 
 export function suggestTitle(text: string): string {
   const line = text
