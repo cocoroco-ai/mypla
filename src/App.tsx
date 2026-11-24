@@ -9,6 +9,8 @@ import ShelfManager from './ShelfManager';
 import NoteScreen from './NoteScreen';
 import BackupScreen from './BackupScreen';
 import { AiCardScreen } from './AiZukan';
+import ThemeScreen from './ThemeScreen';
+import { LineIcon, ShelfIcon } from './icons';
 import { isConfigured, supabase } from './supabase';
 import { addSampleItems } from './samples';
 import {
@@ -44,7 +46,8 @@ type Screen =
   | { name: 'shelves' }
   | { name: 'note' }
   | { name: 'trash' }
-  | { name: 'backup' };
+  | { name: 'backup' }
+  | { name: 'theme' };
 
 export default function App() {
   const [screen, setScreenState] = useState<Screen>({ name: 'home' });
@@ -145,6 +148,7 @@ export default function App() {
             onFavorites={() => setScreen({ name: 'library', filter: 'fav' })}
             onTrash={() => setScreen({ name: 'trash' })}
             onBackup={() => setScreen({ name: 'backup' })}
+            onTheme={() => setScreen({ name: 'theme' })}
           />
         );
       case 'import':
@@ -193,6 +197,8 @@ export default function App() {
         return <TrashScreen onBack={library} />;
       case 'backup':
         return <BackupScreen onBack={home} />;
+      case 'theme':
+        return <ThemeScreen onBack={home} />;
       case 'item':
         return <ItemScreen id={screen.id} onBack={() => setScreen(screen.back ?? { name: 'library' })} backLabel={backLabel(screen.back)} />;
     }
@@ -249,9 +255,10 @@ type HomeProps = {
   onFavorites: () => void;
   onTrash: () => void;
   onBackup: () => void;
+  onTheme: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onFavorites, onTrash, onBackup }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onFavorites, onTrash, onBackup, onTheme }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -476,18 +483,32 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
 
       <div className="tiles">
         <button className="tile is-ready tile-library" onClick={onLibrary}>
-          <span className="tile-name">📚 ライブラリー</span>
-          <span className="tile-note">
-            すべての保管庫{unsortedCount > 0 ? `・整理待ち ${unsortedCount}件` : ''}
+          <span className="tile-icon">
+            <LineIcon name="library" size={28} />
           </span>
-          <span className="badge">{count === null ? '開く' : `${count}件`}</span>
+          <span className="tile-text">
+            <span className="tile-name">ライブラリー</span>
+            <span className="tile-note">
+              すべての保管庫{unsortedCount > 0 ? `・整理待ち ${unsortedCount}件` : ''}
+            </span>
+          </span>
+          <span className="tile-count">
+            {count === null ? '開く' : (
+              <>
+                <strong>{count}</strong>件
+              </>
+            )}
+          </span>
         </button>
         {(shelves ?? []).map((t) => (
-          <button key={t.id} className={`tile is-ready ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
-            <span className="tile-name">
-              {t.icon} {t.name}
+          <button key={t.id} className={`tile is-ready tile-shelf ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
+            <span className="tile-top">
+              <span className="tile-icon">
+                <ShelfIcon emoji={t.icon} />
+              </span>
+              <span className="tile-count">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : ''}</span>
             </span>
-            <span className="badge">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : '開く'}</span>
+            <span className="tile-name">{t.name}</span>
           </button>
         ))}
         <button className="tile tile-add" onClick={onManageShelves}>
@@ -505,6 +526,19 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           </p>
         </div>
       )}
+
+      <button className="home-theme" onClick={onTheme}>
+        <span className="home-theme-icon">
+          <LineIcon name="palette" size={22} />
+        </span>
+        <span className="home-theme-text">
+          <span className="home-theme-name">mypla.を彩る</span>
+          <span className="home-theme-sub">My Color, My Choice.</span>
+        </span>
+        <span className="home-theme-dots" aria-hidden="true">
+          <i /><i /><i />
+        </span>
+      </button>
 
       <button className="home-link" onClick={onBackup}>
         データの書き出し・読み込み（バックアップ）

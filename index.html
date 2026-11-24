@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1F5A4E" />
+    <meta name="theme-color" content="#FAF8FC" />
     <meta name="description" content="集める知識、広がる私。" />
     <!-- ホーム画面アプリ化（PWA） -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -14,6 +14,15 @@
     <meta name="apple-mobile-web-app-title" content="mypla." />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>mypla.</title>
+    <script>
+      // 選んだカラーテーマを、画面が出る前に反映する（一瞬ちがう色が見えないように）
+      (function () {
+        var ids = ['jade', 'azure', 'lavender', 'mauve', 'blue-lavender'];
+        var t = 'lavender';
+        try { var s = localStorage.getItem('mypla-theme'); if (ids.indexOf(s) >= 0) t = s; } catch (e) {}
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

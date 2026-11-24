@@ -1,16 +1,102 @@
+/* ===== 色の決まり =====
+   テーマごとの色は [data-theme] にまとめる（テーマを増やすときは themes.ts と一緒に1つ足す）。
+   エラー・注意・お気に入り・ことばの宝箱などの「意味のある色」は、テーマに関係なく下の :root で固定。 */
 :root {
-  --deep: #1f5a4e;
-  --mint: #dcefe8;
-  --mint-strong: #8fcdb8;
-  --blue: #3a78a0;
-  --blue-soft: #e3eef6;
-  --bg: #f6f8f7;
   --surface: #ffffff;
-  --line: #e3e8e6;
-  --text: #24302d;
-  --text-sub: #6b7773;
+  --text: #2b2930;
+  --text-sub: #5f5b66;
   --error: #b4443c;
+  --error-bg: #fbecea;
+  --error-line: #e3b5b0;
+  --warn-bg: #fbeeea;
+  --warn: #e0b04a;
+  --gold-bg: #fff8e9;     /* ことばの宝箱（全テーマ共通のシャンパンゴールド） */
+  --gold-icon: #b18b40;
+  --gold-line: #ead8af;
+  --gold-text: #6b5221;
+  --gold-ink: #3b2f1c;
+  --star: #c9a227;
+  --star-bg: #fff6d6;
+  --star-line: #e8c95a;
+  --fav-bg: #fffbea;
+  --fav-line: #f3e3a6;
   color-scheme: light;
+}
+
+:root, [data-theme="lavender"] {
+  --main: #75659D;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #5A4C82;          /* 濃色：見出し・文字・リンク */
+  --mint: #EAE4F4;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #A99BC8; /* アクセント：枠線・入力中の縁取り */
+  --blue: #5A4C82;          /* リンク・補助の文字 */
+  --blue-soft: #F3F0F9;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #FAF8FC;              /* 画面の背景 */
+  --bg-clear: rgba(250,248,252, 0);
+  --line: #E6E1EE;          /* 細い枠線 */
+  --topbar: #FAF8FC;
+  --shadow-sm: 0 1px 2px rgba(90, 76, 130, 0.06);
+  --shadow-md: 0 2px 8px rgba(90, 76, 130, 0.10);
+  --shadow-btn: 0 4px 12px rgba(90, 76, 130, 0.25);
+}
+[data-theme="jade"] {
+  --main: #307F70;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #236B5E;          /* 濃色：見出し・文字・リンク */
+  --mint: #DDF0E9;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #8FCDB8; /* アクセント：枠線・入力中の縁取り */
+  --blue: #236B5E;          /* リンク・補助の文字 */
+  --blue-soft: #EAF5F1;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #F5F9F8;              /* 画面の背景 */
+  --bg-clear: rgba(245,249,248, 0);
+  --line: #DCE7E3;          /* 細い枠線 */
+  --topbar: #F5F9F8;
+  --shadow-sm: 0 1px 2px rgba(35, 107, 94, 0.06);
+  --shadow-md: 0 2px 8px rgba(35, 107, 94, 0.10);
+  --shadow-btn: 0 4px 12px rgba(35, 107, 94, 0.25);
+}
+[data-theme="azure"] {
+  --main: #397DA5;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #245B80;          /* 濃色：見出し・文字・リンク */
+  --mint: #DCECF7;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #93BEDC; /* アクセント：枠線・入力中の縁取り */
+  --blue: #245B80;          /* リンク・補助の文字 */
+  --blue-soft: #EAF3FA;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #F3F8FC;              /* 画面の背景 */
+  --bg-clear: rgba(243,248,252, 0);
+  --line: #DAE5EE;          /* 細い枠線 */
+  --topbar: #F3F8FC;
+  --shadow-sm: 0 1px 2px rgba(36, 91, 128, 0.06);
+  --shadow-md: 0 2px 8px rgba(36, 91, 128, 0.10);
+  --shadow-btn: 0 4px 12px rgba(36, 91, 128, 0.25);
+}
+[data-theme="mauve"] {
+  --main: #776479;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #5C4A5E;          /* 濃色：見出し・文字・リンク */
+  --mint: #EDE5ED;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #AA96AA; /* アクセント：枠線・入力中の縁取り */
+  --blue: #5C4A5E;          /* リンク・補助の文字 */
+  --blue-soft: #F5F0F4;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #FAF7F9;              /* 画面の背景 */
+  --bg-clear: rgba(250,247,249, 0);
+  --line: #E8E0E7;          /* 細い枠線 */
+  --topbar: #FAF7F9;
+  --shadow-sm: 0 1px 2px rgba(92, 74, 94, 0.06);
+  --shadow-md: 0 2px 8px rgba(92, 74, 94, 0.10);
+  --shadow-btn: 0 4px 12px rgba(92, 74, 94, 0.25);
+}
+[data-theme="blue-lavender"] {
+  --main: #646FA6;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #4B5588;          /* 濃色：見出し・文字・リンク */
+  --mint: #E5E9F6;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #9DA8D1; /* アクセント：枠線・入力中の縁取り */
+  --blue: #4B5588;          /* リンク・補助の文字 */
+  --blue-soft: #EFF2FA;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #F6F8FC;              /* 画面の背景 */
+  --bg-clear: rgba(246,248,252, 0);
+  --line: #E1E5F0;          /* 細い枠線 */
+  --topbar: #F6F8FC;
+  --shadow-sm: 0 1px 2px rgba(75, 85, 136, 0.06);
+  --shadow-md: 0 2px 8px rgba(75, 85, 136, 0.10);
+  --shadow-btn: 0 4px 12px rgba(75, 85, 136, 0.25);
 }
 
 * { box-sizing: border-box; }
@@ -34,16 +120,16 @@ button:disabled { opacity: 0.5; cursor: default; }
 .topbar {
   position: sticky; top: 0; z-index: 10;
   padding: calc(env(safe-area-inset-top) + 8px) 16px 8px;
-  background: linear-gradient(90deg, var(--mint), var(--blue-soft));
+  background: var(--topbar);
   border-bottom: 1px solid var(--line);
 }
 .brand {
   background: none; border: 0; padding: 4px 0;
   font-size: 22px; font-weight: 700; color: var(--deep); letter-spacing: 0.02em;
 }
-.brand .dot { color: var(--blue); }
+.brand .dot { color: var(--main); }
 
-.content { padding: 16px 16px 140px; }
+.content { padding: 16px 16px calc(env(safe-area-inset-bottom) + 150px); }
 
 .tagline { margin: 4px 0 16px; color: var(--text-sub); font-size: 14px; }
 
@@ -54,7 +140,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   position: relative; display: flex; flex-direction: column; gap: 4px;
   min-height: 112px; padding: 16px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--line);
-  box-shadow: 0 1px 2px rgba(31, 90, 78, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 .tile-name { font-weight: 700; font-size: 18px; color: var(--deep); }
 .tile-note { font-size: 13px; color: var(--text-sub); line-height: 1.5; }
@@ -66,7 +152,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .card {
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-  padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(31, 90, 78, 0.06);
+  padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm);
 }
 
 .dropzone {
@@ -118,7 +204,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .hint { font-size: 13px; color: var(--text-sub); margin: 8px 0 12px; }
 .error {
-  color: var(--error); background: #fbecea; border-radius: 10px;
+  color: var(--error); background: var(--error-bg); border-radius: 10px;
   padding: 12px; font-size: 14px; margin: 0 0 16px;
 }
 
@@ -129,8 +215,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .btn-primary, .btn-secondary, .btn-text { min-height: 44px; border-radius: 10px; }
 .btn-primary {
-  border: 0; background: var(--deep); color: #fff; font-weight: 700;
-  box-shadow: 0 4px 12px rgba(31, 90, 78, 0.25);
+  border: 0; background: var(--main); color: #fff; font-weight: 700;
+  box-shadow: var(--shadow-btn);
 }
 .btn-large { width: 100%; min-height: 56px; font-size: 17px; }
 .btn-secondary {
@@ -143,7 +229,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .bottom-action {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
   padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
-  background: linear-gradient(to top, var(--bg) 70%, rgba(246, 248, 247, 0));
+  background: linear-gradient(to top, var(--bg) 70%, var(--bg-clear));
 }
 .bottom-action > * { max-width: 608px; margin: 0 auto; display: block; }
 
@@ -178,7 +264,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .segmented button.is-on {
   background: var(--surface); color: var(--deep); font-weight: 700;
-  box-shadow: 0 1px 3px rgba(31, 90, 78, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 /* 範囲指定 */
@@ -253,9 +339,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 /* ホームのタイル（使えるもの） */
 .tile.is-ready {
   text-align: left; font: inherit; color: inherit; cursor: pointer;
-  border-color: var(--mint-strong); box-shadow: 0 2px 8px rgba(31, 90, 78, 0.08);
+  border-color: var(--line); box-shadow: var(--shadow-sm);
 }
-.tile.is-ready .badge { background: var(--deep); color: #fff; }
 
 /* ライブラリー一覧 */
 .item-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 10px; }
@@ -322,7 +407,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 /* 削除・ゴミ箱 */
 .btn-danger {
   display: block; width: 100%; min-height: 44px; margin: 8px 0 24px; border-radius: 10px;
-  border: 1px solid #e3b5b0; background: var(--surface); color: var(--error); font-weight: 700;
+  border: 1px solid var(--error-line); background: var(--surface); color: var(--error); font-weight: 700;
 }
 .trash-link {
   display: block; margin: 8px auto 0; min-height: 44px; padding: 0 12px;
@@ -335,7 +420,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .trash-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .trash-actions .btn-secondary { font-size: 14px; }
 .btn-danger-small {
-  min-height: 44px; border-radius: 10px; border: 1px solid #e3b5b0;
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--error-line);
   background: var(--surface); color: var(--error); font-size: 14px; font-weight: 700;
 }
 .days-left { font-size: 12px; color: var(--error); }
@@ -358,7 +443,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
   background: var(--blue-soft); border: none; border-radius: 10px;
 }
 .notice-item:active { filter: brightness(0.96); }
-.notice-item.is-warn { background: #fbeeea; }
+.notice-item.is-warn { background: var(--warn-bg); }
 .notice-item.is-static { cursor: default; background: var(--mint); }
 .notice-kind { font-size: 12px; font-weight: 700; color: var(--blue); }
 .notice-item.is-warn .notice-kind { color: var(--error); }
@@ -383,7 +468,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .guest-card .hint { margin: 0; }
 .guest-banner {
   display: grid; gap: 4px; margin: 0 0 16px; padding: 10px 12px;
-  background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 12px; font-size: 14px; line-height: 1.6;
+  background: var(--gold-bg); border: 1px solid var(--gold-line); border-radius: 12px; font-size: 14px; line-height: 1.6;
 }
 .guest-banner-note { font-size: 12px; color: var(--text-sub); }
 .guest-upgrade { margin-top: 4px; font-size: 13px; }
@@ -443,7 +528,7 @@ mark { background: #fff1a8; color: inherit; border-radius: 3px; padding: 0 1px; 
 .usage-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-sub); margin-bottom: 4px; }
 .usage-bar { height: 10px; border-radius: 5px; background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
 .usage-bar > div { height: 100%; background: var(--mint-strong); }
-.usage-bar.is-warn > div { background: #e0b04a; }
+.usage-bar.is-warn > div { background: var(--warn); }
 .usage-bar.is-danger > div { background: var(--error); }
 
 /* 記事をまとめる */
@@ -500,15 +585,14 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .title-row .btn-small { margin-top: 10px; flex: 0 0 auto; }
 .title-edit { display: grid; gap: 8px; margin: 8px 0 12px; }
 .title-edit-actions { display: flex; gap: 8px; }
-.btn-small.is-primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+.btn-small.is-primary { background: var(--main); color: #fff; border-color: var(--main); }
 .merge-title { margin-bottom: 16px; }
 
 /* 棚 */
 .shelf-badge {
   display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
-  background: #fff4e0; color: #8a5a00; font-size: 11px; font-weight: 700;
+  background: var(--mint); color: var(--deep); font-size: 11px; font-weight: 700;
 }
-.tile.shelf-kotoba { background: linear-gradient(135deg, #fffaf0, #fff1d6); border-color: #f0d9a8; }
 
 /* ことばの宝箱：言葉を大きく見せるカード */
 .photo-grid { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
@@ -520,21 +604,21 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .word-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
 .word-card {
   width: 100%; display: grid; gap: 8px; padding: 18px 18px 12px; text-align: left; font: inherit; color: inherit;
-  background: linear-gradient(135deg, #fffdf7, #fff6e3); border: 1px solid #f0d9a8; border-radius: 14px; cursor: pointer;
+  background: var(--gold-bg); border: 1px solid var(--gold-line); border-radius: 14px; cursor: pointer;
 }
 .word-text {
-  font-size: 18px; line-height: 1.8; color: #3b2f1c; font-weight: 600; white-space: pre-wrap;
+  font-size: 18px; line-height: 1.8; color: var(--gold-ink); font-weight: 600; white-space: pre-wrap;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
 }
-.word-source { font-size: 14px; color: #8a6a3a; text-align: right; }
+.word-source { font-size: 14px; color: var(--gold-text); text-align: right; }
 .word-foot { display: flex; align-items: center; gap: 8px; }
-.word-foot img { width: 36px; height: 48px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid #f0d9a8; }
+.word-foot img { width: 36px; height: 48px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid var(--gold-line); }
 
 /* お知らせ：今日のことば */
-.notice-item.is-word { background: linear-gradient(135deg, #fffdf7, #fff1d6); }
-.notice-item.is-word .notice-kind { color: #8a5a00; }
-.notice-word { font-size: 16px; line-height: 1.7; color: #3b2f1c; font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif; }
-.notice-source { font-size: 13px; color: #8a6a3a; text-align: right; }
+.notice-item.is-word { background: var(--gold-bg); }
+.notice-item.is-word .notice-kind { color: var(--gold-text); }
+.notice-word { font-size: 16px; line-height: 1.7; color: var(--gold-ink); font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif; }
+.notice-source { font-size: 13px; color: var(--gold-text); text-align: right; }
 
 /* 記事画面：棚に移す */
 .shelf-card .hint { margin: 0 0 8px; }
@@ -547,17 +631,14 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .source-field { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
 .source-title { margin: 0; font-size: 14px; color: var(--deep); }
 .source-field .btn-small { justify-self: start; }
-.item-source { margin: 8px 0 0; text-align: right; color: #8a6a3a; font-size: 14px; }
+.item-source { margin: 8px 0 0; text-align: right; color: var(--gold-text); font-size: 14px; }
 
 /* ホーム：ライブラリーは横幅いっぱい、棚は自分で作れる */
-.tile-library { grid-column: 1 / -1; min-height: 96px; background: linear-gradient(135deg, #ffffff, var(--mint)); }
-.tile-library .tile-name { font-size: 20px; }
-.tile.is-cards { background: linear-gradient(135deg, #fffaf0, #fff1d6); border-color: #f0d9a8; }
 .tile-add {
-  text-align: center; display: grid; place-items: center; min-height: 64px; font: inherit; cursor: pointer;
-  border: 2px dashed var(--line); background: transparent; color: var(--blue);
+  text-align: center; display: grid; place-items: center; min-height: 52px; font: inherit; cursor: pointer;
+  border: 1px dashed var(--mint-strong); background: transparent; color: var(--deep); box-shadow: none;
 }
-.tile-add .tile-name { font-size: 15px; color: var(--blue); }
+.tile-add .tile-name { font-size: 15px; font-weight: 700; color: var(--deep); }
 
 /* 棚の追加・編集 */
 .shelf-edit { display: grid; gap: 12px; margin-bottom: 16px; }
@@ -577,7 +658,7 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 }
 .shelf-row-name { font-weight: 700; color: var(--deep); font-size: 16px; }
 .shelf-row-style {
-  margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fff4e0; color: #8a5a00;
+  margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--mint); color: var(--deep);
   font-size: 11px; font-weight: 700;
 }
 .shelf-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -629,15 +710,15 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 /* ★お気に入り */
 .fav-toggle {
   flex: 0 0 auto; width: 44px; height: 44px; margin-top: 6px; border-radius: 22px; border: 1px solid var(--line);
-  background: var(--surface); color: #c9a227; font-size: 24px; line-height: 1; padding: 0; cursor: pointer;
+  background: var(--surface); color: var(--star); font-size: 24px; line-height: 1; padding: 0; cursor: pointer;
 }
-.fav-toggle.is-on { background: #fff6d6; border-color: #e8c95a; }
-.fav-mark { color: #c9a227; margin-right: 4px; }
+.fav-toggle.is-on { background: var(--star-bg); border-color: var(--star-line); }
+.fav-mark { color: var(--star); margin-right: 4px; }
 .fav-card { margin: 0 0 16px; }
 .fav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .fav-item {
   width: 100%; display: flex; gap: 8px; align-items: center; padding: 10px 12px; min-height: 44px;
-  text-align: left; font: inherit; color: var(--text); background: #fffbea; border: 1px solid #f3e3a6;
+  text-align: left; font: inherit; color: var(--text); background: var(--fav-bg); border: 1px solid var(--fav-line);
   border-radius: 10px; cursor: pointer;
 }
 .fav-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -663,7 +744,7 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .ai-targets button { min-height: 48px; font-size: 14px; padding: 6px 4px; }
 .ai-handoff .notice, .ai-handoff .error { margin: 0; }
 .ai-targets-label { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-sub); }
-.notice-item.is-backup { background: #eef6ff; }
+.notice-item.is-backup { background: var(--blue-soft); }
 .notice-item.is-backup .notice-kind { color: var(--blue); }
 
 /* AI図鑑：AIごとのカード */
@@ -702,3 +783,96 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .ai-open-url { font-size: 12px; font-weight: 400; opacity: 0.85; overflow-wrap: anywhere; }
 .view-shelf-button { width: 100%; margin-top: 12px; }
 .shelf-card { scroll-margin-top: 90px; }
+
+/* ===== ホーム（カラーテーマ対応のデザイン） ===== */
+.tiles { gap: 10px; }
+.line-icon { display: block; }
+.emoji-icon { font-size: 20px; line-height: 1; }
+/* ライブラリー：メインカラーで、いちばん目立つ場所に */
+.tile-library {
+  grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  min-height: 84px; padding: 14px 16px; background: var(--main); border: 1px solid var(--main); color: #fff;
+  box-shadow: var(--shadow-btn);
+}
+.tile.tile-library.is-ready { border-color: var(--main); box-shadow: var(--shadow-btn); }
+.tile-library .tile-icon {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+}
+.tile-library .tile-text { display: grid; gap: 2px; min-width: 0; }
+.tile-library .tile-name { font-size: 19px; color: #fff; }
+.tile-library .tile-note { color: #fff; font-size: 12px; }
+.tile-library .tile-count { font-size: 13px; color: #fff; white-space: nowrap; }
+.tile-library .tile-count strong { font-size: 26px; font-weight: 700; margin-right: 2px; letter-spacing: 0.01em; }
+/* 棚：白い背景に細い枠、件数は文字で */
+.tile-shelf { min-height: 92px; padding: 12px 14px; gap: 6px; justify-content: space-between; }
+.tile-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tile-shelf .tile-icon {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--mint); color: var(--deep);
+}
+.tile-shelf .tile-count { font-size: 13px; color: var(--text-sub); }
+.tile-shelf .tile-name { font-size: 16px; line-height: 1.4; color: var(--deep); }
+/* ことばの宝箱（言葉のカードの棚）：全テーマ共通のシャンパンゴールド */
+.tile.tile-shelf.is-cards { background: var(--gold-bg); border-color: var(--gold-line); }
+.tile-shelf.is-cards .tile-icon { background: #ffffff; color: var(--gold-icon); box-shadow: inset 0 0 0 1px var(--gold-line); }
+.tile-shelf.is-cards .tile-name { color: var(--gold-ink); }
+.tile-shelf.is-cards .tile-count { color: var(--gold-text); }
+.tile.is-ready:active { filter: brightness(0.97); }
+
+/* ホーム：mypla.を彩る */
+.home-theme {
+  width: 100%; display: flex; align-items: center; gap: 12px; margin: 16px 0 0; padding: 12px 14px; min-height: 60px;
+  text-align: left; font: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow-sm); cursor: pointer;
+}
+.home-theme-icon {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--mint); color: var(--deep);
+}
+.home-theme-text { flex: 1; display: grid; min-width: 0; }
+.home-theme-name { font-weight: 700; color: var(--deep); font-size: 15px; }
+.home-theme-sub { font-size: 12px; color: var(--text-sub); font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.home-theme-dots { display: flex; gap: 4px; }
+.home-theme-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--main); }
+.home-theme-dots i:nth-child(2) { background: var(--mint-strong); }
+.home-theme-dots i:nth-child(3) { background: var(--mint); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* ===== mypla.を彩る（カラーテーマ選び） ===== */
+.theme-screen { padding-bottom: 8px; }
+.theme-hero { text-align: center; margin-top: 8px; }
+.theme-brand { margin: 0; font-size: 34px; font-weight: 700; color: var(--deep); letter-spacing: 0.02em; line-height: 1.3; }
+.theme-brand .dot { color: var(--main); }
+.theme-tagline { margin: 2px 0 0; font-size: 14px; color: var(--text-sub); letter-spacing: 0.08em; }
+.theme-rule { width: 64px; height: 1px; margin: 22px auto; border: 0; background: var(--mint-strong); }
+.theme-lead { text-align: center; }
+.theme-title {
+  margin: 0; font-size: 25px; font-weight: 600; color: var(--deep); line-height: 1.4;
+  font-family: Georgia, 'Times New Roman', serif; font-style: italic; letter-spacing: 0.01em;
+}
+.theme-sub { margin: 6px 0 0; font-size: 14px; color: var(--text-sub); }
+.swatch-list {
+  list-style: none; margin: 28px auto 4px; padding: 0; max-width: 380px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 6px;
+}
+.swatch-list > li { width: calc((100% - 12px) / 3); }
+.swatch {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; min-height: 44px; background: none; border: 0; font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.swatch-dot {
+  width: 60px; height: 60px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--sw-main) 50%, var(--sw-sub));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); transition: transform 0.15s;
+}
+.swatch:active .swatch-dot { transform: scale(0.96); }
+.swatch.is-on .swatch-dot { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--sw-main), 0 2px 8px rgba(0, 0, 0, 0.15); }
+.swatch-name { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; text-align: center; }
+.swatch-kana { font-size: 11px; color: var(--text-sub); line-height: 1.3; }
+.swatch.is-on .swatch-name { color: var(--deep); }
+.theme-note { margin: 18px 0 0; text-align: center; font-size: 14px; color: var(--deep); }
+.theme-message {
+  margin: 32px 0 6px; text-align: center; font-size: 18px; color: var(--deep); letter-spacing: 0.12em;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+}
