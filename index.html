@@ -17,7 +17,7 @@
     <script>
       // 選んだカラーテーマを、画面が出る前に反映する（一瞬ちがう色が見えないように）
       (function () {
-        var ids = ['jade', 'azure', 'lavender', 'mauve', 'blue-lavender'];
+        var ids = ['jade', 'azure', 'lavender', 'mauve', 'blue-lavender', 'sakura'];
         var t = 'lavender';
         try { var s = localStorage.getItem('mypla-theme'); if (ids.indexOf(s) >= 0) t = s; } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);

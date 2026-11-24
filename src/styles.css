@@ -98,6 +98,21 @@
   --shadow-md: 0 2px 8px rgba(75, 85, 136, 0.10);
   --shadow-btn: 0 4px 12px rgba(75, 85, 136, 0.25);
 }
+[data-theme="sakura"] {
+  --main: #A35E74;          /* メイン：ライブラリー・主なボタン（白い文字が読める濃さ） */
+  --deep: #7E4458;          /* 濃色：見出し・文字・リンク */
+  --mint: #F6E5EB;          /* 淡色：淡い背景・選んでいる印 */
+  --mint-strong: #D9A7B7; /* アクセント：枠線・入力中の縁取り */
+  --blue: #7E4458;          /* リンク・補助の文字 */
+  --blue-soft: #FAF0F3;     /* お知らせなどの、さらに淡い背景 */
+  --bg: #FCF7F8;              /* 画面の背景 */
+  --bg-clear: rgba(252,247,248, 0);
+  --line: #EEE0E5;          /* 細い枠線 */
+  --topbar: #FCF7F8;
+  --shadow-sm: 0 1px 2px rgba(126, 68, 88, 0.06);
+  --shadow-md: 0 2px 8px rgba(126, 68, 88, 0.10);
+  --shadow-btn: 0 4px 12px rgba(126, 68, 88, 0.25);
+}
 
 * { box-sizing: border-box; }
 

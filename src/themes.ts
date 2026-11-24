@@ -3,7 +3,7 @@
 // テーマを増やすときは、① styles.css に [data-theme] のかたまりを1つ足し、② 下の THEMES に1行足す。
 // 選んだテーマはこの端末に保存する（保存した記事などのデータには一切さわらない）。
 
-export type ThemeId = 'jade' | 'azure' | 'lavender' | 'mauve' | 'blue-lavender';
+export type ThemeId = 'jade' | 'azure' | 'lavender' | 'mauve' | 'blue-lavender' | 'sakura';
 
 export type Theme = {
   id: ThemeId;
@@ -20,6 +20,7 @@ export const THEMES: Theme[] = [
   { id: 'lavender', name: 'Lavender Mist', kana: 'ラベンダーミスト', note: '柔らかさと知性を兼ね備えたラベンダー', swatch: { main: '#75659D', sub: '#A99BC8' } },
   { id: 'mauve', name: 'Mauve', kana: 'モーヴ', note: '控えめな華やかさを持つ、大人の紫', swatch: { main: '#776479', sub: '#AA96AA' } },
   { id: 'blue-lavender', name: 'Blue Lavender', kana: 'ブルーラベンダー', note: '凛とした美しさと透明感', swatch: { main: '#646FA6', sub: '#9DA8D1' } },
+  { id: 'sakura', name: 'Sakura', kana: 'さくら', note: '春の光に咲く、やさしく凛としたさくら色', swatch: { main: '#A35E74', sub: '#E3B5C3' } },
 ];
 
 export const DEFAULT_THEME: ThemeId = 'lavender';
