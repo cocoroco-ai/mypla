@@ -515,6 +515,18 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             </div>
           )}
 
+          <button
+            className="btn-secondary view-shelf-button"
+            onClick={() => {
+              setMode('edit');
+              setNotice('');
+              // 編集画面の「棚に移す」の欄まで動かす
+              setTimeout(() => document.querySelector('.shelf-card')?.scrollIntoView({ block: 'start' }), 50);
+            }}
+          >
+            {currentShelf ? `${currentShelf.icon} 棚を変える${isAiShelf ? '・どのAIの話か選ぶ' : ''}` : '📂 棚に移す'}
+          </button>
+
           {viewIndex !== null && imageUrlList[viewIndex] && (
             <ImageViewer
               src={imageUrlList[viewIndex]}

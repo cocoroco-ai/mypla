@@ -233,7 +233,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
       {shelfInfo && !isPhotos && (
         <p className="hint">
-          ライブラリーの記事を開いて「棚に移す」で、ここに集められます（ライブラリーにも残ります）。
+          ライブラリーの記事を開いて、下の「📂 棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
       )}
       {isPhotos && (
@@ -336,7 +336,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               ) : shelfInfo ? (
                 <>
                   <p>まだ「{shelfInfo.name}」に記事がありません。</p>
-                  <p className="hint">ライブラリーで記事を開き、「棚に移す」から「{shelfInfo.name}」を選ぶと、ここに並びます。</p>
+                  <p className="hint">ライブラリーで記事を開き、下の「📂 棚に移す」から「{shelfInfo.name}」を選ぶと、ここに並びます。</p>
                 </>
               ) : (
                 <>
