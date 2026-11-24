@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
 import AiHandoff from './AiHandoff';
 import CropEditor from './CropEditor';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, type AiCard, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -248,6 +248,32 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     listShelves().then(setShelves).catch(() => setShelves([]));
   }, []);
   const currentShelf = shelves.find((x) => x.id === item?.shelfId) ?? null;
+  // AI図鑑：どのAIの話か（AI図鑑の見た目の棚に置いたとき、またはひもづけ済みのときだけ読む）
+  const isAiShelf = currentShelf?.style === 'ai';
+  const [aiCards, setAiCards] = useState<AiCard[] | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const needAiCards = isAiShelf || Boolean(item?.aiCardId);
+  useEffect(() => {
+    if (!needAiCards || aiCards !== null) return;
+    listAiCards().then(setAiCards).catch(() => setAiCards([]));
+  }, [needAiCards, aiCards]);
+  const currentAiCard = aiCards?.find((c) => c.id === item?.aiCardId) ?? null;
+
+  async function pickAiCard(next: AiCard | null) {
+    if (!item || (next?.id ?? null) === item.aiCardId) return;
+    setError('');
+    setAiBusy(true);
+    try {
+      await updateItem(id, { aiCardId: next?.id ?? null });
+      await reload();
+      setNotice(next ? `「${next.name}」の記事にしました。` : 'AIのひもづけを外しました。');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      setError(`変えられませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setAiBusy(false);
+    }
+  }
   useEffect(() => {
     if (item) setSource(item.source);
   }, [item?.id, item?.source]);
@@ -432,6 +458,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 {currentShelf.icon} {currentShelf.name}
               </span>
             )}
+            {currentAiCard && <span className="shelf-badge">{currentAiCard.name}</span>}
           </p>
 
           {imageUrlList.length > 0 && (
@@ -670,6 +697,36 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               <button className="btn-text" onClick={() => moveToShelf(null)} disabled={shelfBusy}>
                 棚から外す（ライブラリーだけにする）
               </button>
+            )}
+            {(isAiShelf || currentAiCard) && (
+              <div className="source-field">
+                <h3 className="source-title">どのAIの話？</h3>
+                <p className="hint">選ぶと、AI図鑑でそのAIのカードを開いたときに、この記事が並びます。</p>
+                {aiCards === null ? (
+                  <p className="hint">読み込んでいます…</p>
+                ) : aiCards.length === 0 ? (
+                  <p className="hint">AIカードがありません。AI図鑑の棚の「＋ AIを追加」で作れます。</p>
+                ) : (
+                  <div className="shelf-choices" role="group" aria-label="どのAIの話か">
+                    {aiCards.map((c) => (
+                      <button
+                        key={c.id}
+                        className={`shelf-choice ${item.aiCardId === c.id ? 'is-on' : ''}`}
+                        onClick={() => pickAiCard(c)}
+                        disabled={aiBusy}
+                        aria-pressed={item.aiCardId === c.id}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {item.aiCardId && (
+                  <button className="btn-text" onClick={() => pickAiCard(null)} disabled={aiBusy}>
+                    どのAIでもない（ひもづけを外す）
+                  </button>
+                )}
+              </div>
             )}
             {(currentShelf?.style === 'cards' || item.source) && (
               <div className="source-field">

@@ -174,6 +174,7 @@ export type ItemSummary = {
   isNote: boolean; // 自分で書いたノート（スクショではない）
   isPhoto: boolean; // 写真の棚から入れた写真（文字にする前提ではないので、整理待ちに数えない）
   favorite: boolean; // ★お気に入り
+  aiCardId: string | null; // AI図鑑：どのAIの話か（null = ひもづけなし）
 };
 
 // ---------------------------------------------------------------------
@@ -181,7 +182,7 @@ export type ItemSummary = {
 // ---------------------------------------------------------------------
 
 /** 棚。名前・アイコン・見た目（一覧 / 言葉のカード）は、自分で決められる */
-export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos'; sortOrder: number };
+export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos' | 'ai'; sortOrder: number };
 export const SHELF_MAX = 20;
 
 /** 自分の棚を並び順で取る（初めてのときは、最初の4つの棚を作る） */
@@ -225,6 +226,72 @@ export async function deleteShelf(id: string): Promise<void> {
   if (error) throw new Error(toJapaneseError(error.message));
 }
 
+// ---------------------------------------------------------------------
+// AI図鑑（AIごとのカード：名前・公式リンク・得意なこと。記事を「どのAIの話か」でひもづける）
+// ---------------------------------------------------------------------
+
+export type AiCard = { id: string; name: string; url: string; strength: string; sortOrder: number };
+export const AI_CARD_MAX = 50;
+
+/** 自分のAIカードを並び順で取る（主要AIのカードは、listShelves の初回準備で用意される） */
+export async function listAiCards(): Promise<AiCard[]> {
+  const { data, error } = await supabase
+    .from('ai_cards')
+    .select('id, name, url, strength, sort_order')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(toJapaneseError(error.message));
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    url: (r.url as string) ?? '',
+    strength: (r.strength as string) ?? '',
+    sortOrder: r.sort_order as number,
+  }));
+}
+
+export async function createAiCard(input: { name: string; url: string; strength: string }, sortOrder: number): Promise<string> {
+  const { data, error } = await supabase
+    .from('ai_cards')
+    .insert({ name: input.name.trim(), url: normalizeUrl(input.url), strength: input.strength.trim(), sort_order: sortOrder })
+    .select('id')
+    .single();
+  if (error || !data) throw new Error(toJapaneseError(error?.message ?? '追加できませんでした'));
+  return data.id as string;
+}
+
+export async function updateAiCard(id: string, patch: { name: string; url: string; strength: string }): Promise<void> {
+  const { error } = await supabase
+    .from('ai_cards')
+    .update({ name: patch.name.trim(), url: normalizeUrl(patch.url), strength: patch.strength.trim() })
+    .eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** カードを削除する（ひもづけていた記事は消えずに、ひもづけだけ外れる） */
+export async function deleteAiCard(id: string): Promise<void> {
+  const { error } = await supabase.from('ai_cards').delete().eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** カードごとの記事の数（ゴミ箱は除く） */
+export async function countByAiCard(): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('items')
+      .select('ai_card_id')
+      .is('deleted_at', null)
+      .not('ai_card_id', 'is', null)
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(toJapaneseError(error.message));
+    for (const r of data ?? []) counts[r.ai_card_id as string] = (counts[r.ai_card_id as string] ?? 0) + 1;
+    if (!data || data.length < PAGE) break;
+  }
+  return counts;
+}
+
 export type ItemDetail = ItemSummary & {
   imagePaths: string[]; // すべての画像（並び順）
   images: { id: string; path: string }[]; // 同じ並びで、画像の番号つき
@@ -249,6 +316,7 @@ type Row = {
   url: string;
   source_type: string;
   favorite: boolean;
+  ai_card_id: string | null;
 };
 
 function firstImage(row: Row): string | null {
@@ -272,10 +340,11 @@ function toSummary(row: Row): ItemSummary {
     isNote: row.source_type === 'note',
     isPhoto: row.source_type === 'photo',
     favorite: row.favorite ?? false,
+    aiCardId: row.ai_card_id ?? null,
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite, ai_card_id';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -285,6 +354,7 @@ export async function listItems(
   onlyUnsorted = false,
   shelfId: string | null = null,
   onlyFavorite = false,
+  aiCardId: string | null = null,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -294,6 +364,7 @@ export async function listItems(
   if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null).neq('source_type', 'photo');
   if (shelfId) request = request.eq('shelf_id', shelfId);
   if (onlyFavorite) request = request.eq('favorite', true);
+  if (aiCardId) request = request.eq('ai_card_id', aiCardId);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -383,6 +454,7 @@ export type ItemPatch = {
   /** ノートの文章（ノートは「読み取った文章」と「手直し」を分けないので、そのまま置き換える） */
   noteText?: string;
   favorite?: boolean;
+  aiCardId?: string | null;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -418,6 +490,7 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   if (patch.shelfId !== undefined) values.shelf_id = patch.shelfId;
   if (patch.url !== undefined) values.url = normalizeUrl(patch.url);
   if (patch.favorite !== undefined) values.favorite = patch.favorite;
+  if (patch.aiCardId !== undefined) values.ai_card_id = patch.aiCardId;
   if (patch.noteText !== undefined) {
     values.ocr_text = patch.noteText;
     values.edited_text = null;

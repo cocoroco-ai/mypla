@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, type ItemSummary, type Shelf } from './library';
+import { AiCardGrid } from './AiZukan';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, type AiCard, type ItemSummary, type Shelf } from './library';
 
 const PAGE = 20;
 
@@ -11,13 +12,30 @@ type Props = {
   onTrash: () => void;
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
   initialFilter?: 'all' | 'fav' | 'unsorted';
+  onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
-export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter }: Props) {
+export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter, onOpenAiCard }: Props) {
   const shelfInfo = shelf ?? null;
   const isWords = shelf?.style === 'cards';
   const isPhotos = shelf?.style === 'photos';
+  const isAi = shelf?.style === 'ai';
+  // AI図鑑の棚：上にAIカードを並べ、記事にはどのAIの話かの印を付ける
+  const [aiCards, setAiCards] = useState<AiCard[] | null>(null);
+  const [aiCounts, setAiCounts] = useState<Record<string, number>>({});
+  function loadAiCards() {
+    Promise.all([listAiCards(), countByAiCard()])
+      .then(([list, counts]) => {
+        setAiCards(list);
+        setAiCounts(counts);
+      })
+      .catch(() => setAiCards([]));
+  }
+  useEffect(() => {
+    if (isAi) loadAiCards();
+  }, [isAi]);
+  const aiCardMap = Object.fromEntries((aiCards ?? []).map((c) => [c.id, c]));
   // 写真の棚：棚から直接、写真を入れる（文字は読まない）
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
@@ -225,6 +243,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       )}
       {photoNotice && <p className="notice" role="status">{photoNotice}</p>}
 
+      {isAi && !merging && (
+        <AiCardGrid cards={aiCards} counts={aiCounts} onOpen={(c) => onOpenAiCard?.(c)} onChanged={loadAiCards} />
+      )}
+      {isAi && <h2 className="ai-zukan-title">この棚の記事</h2>}
+
       <form
         className="search"
         role="search"
@@ -403,6 +426,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                   {item.edited && <span className="state-badge is-edited">手直しあり</span>}
                   {item.isNote && <span className="note-badge">ノート</span>}
                   {item.url && <span className="note-badge">🔗</span>}
+                  {isAi && item.aiCardId && aiCardMap[item.aiCardId] && (
+                    <span className="shelf-badge">{aiCardMap[item.aiCardId].name}</span>
+                  )}
                   {!shelf && item.shelfId && shelfMap[item.shelfId] && (
                     <span className="shelf-badge">
                       {shelfMap[item.shelfId].icon} {shelfMap[item.shelfId].name}

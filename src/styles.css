@@ -665,3 +665,38 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .ai-targets-label { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-sub); }
 .notice-item.is-backup { background: #eef6ff; }
 .notice-item.is-backup .notice-kind { color: var(--blue); }
+
+/* AI図鑑：AIごとのカード */
+.ai-zukan { margin: 4px 0 20px; }
+.ai-zukan-title { font-size: 16px; color: var(--deep); margin: 18px 0 10px; }
+.ai-grid { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ai-grid > li { display: flex; }
+.ai-card {
+  display: flex; flex-direction: column; gap: 6px; width: 100%; min-height: 128px; padding: 12px;
+  text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  color: var(--text); font: inherit; cursor: pointer;
+}
+.ai-card:active { background: var(--mint); }
+.ai-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ai-card-name { font-weight: 700; font-size: 16px; color: var(--deep); overflow-wrap: anywhere; line-height: 1.3; }
+.ai-card-strength {
+  font-size: 13px; line-height: 1.5; color: var(--text-sub);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ai-card-count { margin-top: auto; font-size: 12px; color: var(--blue); }
+.ai-avatar {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 15px;
+}
+.ai-avatar.is-large { width: 52px; height: 52px; font-size: 24px; }
+.ai-add { margin-bottom: 4px; }
+.ai-form { margin-top: 8px; display: grid; gap: 10px; }
+.ai-form .field { display: grid; gap: 4px; }
+.ai-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.ai-detail-head .screen-title { margin: 0; overflow-wrap: anywhere; }
+.ai-detail-strength { margin: 0 0 12px; white-space: pre-wrap; }
+.ai-open {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  margin-bottom: 12px; text-decoration: none; text-align: center;
+}
+.ai-open-url { font-size: 12px; font-weight: 400; opacity: 0.85; overflow-wrap: anywhere; }

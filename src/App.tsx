@@ -8,6 +8,7 @@ import TrashScreen from './TrashScreen';
 import ShelfManager from './ShelfManager';
 import NoteScreen from './NoteScreen';
 import BackupScreen from './BackupScreen';
+import { AiCardScreen } from './AiZukan';
 import { isConfigured, supabase } from './supabase';
 import { addSampleItems } from './samples';
 import {
@@ -21,6 +22,7 @@ import {
   pickTodayWord,
   type ItemSummary,
   type Shelf,
+  type AiCard,
   countTrashExpiringSoon,
   myImageQuota,
   myQuota,
@@ -38,6 +40,7 @@ type Screen =
   | { name: 'library'; filter?: 'all' | 'fav' | 'unsorted' }
   | { name: 'item'; id: string; back?: Screen }
   | { name: 'shelf'; shelf: Shelf }
+  | { name: 'aicard'; card: AiCard; shelf: Shelf }
   | { name: 'shelves' }
   | { name: 'note' }
   | { name: 'trash' }
@@ -166,8 +169,22 @@ export default function App() {
             onImport={importShot}
             onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
             onTrash={() => setScreen({ name: 'trash' })}
+            onOpenAiCard={(card) => setScreen({ name: 'aicard', card, shelf: screen.shelf })}
           />
         );
+      case 'aicard': {
+        const toShelf = () => setScreen({ name: 'shelf', shelf: screen.shelf });
+        return (
+          <AiCardScreen
+            key={screen.card.id}
+            card={screen.card}
+            backLabel={screen.shelf.name}
+            onBack={toShelf}
+            onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
+            onChanged={(card) => (card ? setScreenState({ ...screen, card }) : toShelf())}
+          />
+        );
+      }
       case 'note':
         return <NoteScreen onBack={home} onSaved={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })} />;
       case 'shelves':
@@ -213,6 +230,7 @@ function backLabel(back?: Screen): string {
   if (!back || back.name === 'library') return 'ライブラリー';
   if (back.name === 'home') return 'ホーム';
   if (back.name === 'shelf') return back.shelf.name;
+  if (back.name === 'aicard') return back.card.name;
   return '戻る';
 }
 

@@ -2,7 +2,7 @@
 // どちらも端末の中だけで ZIP を作る・開く（外部のサービスには送らない）。
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { supabase, toJapaneseError } from './supabase';
-import { createShelf, listShelves, type Shelf } from './library';
+import { createAiCard, createShelf, listAiCards, listShelves, type AiCard, type Shelf } from './library';
 
 const BUCKET = 'item-images';
 const FORMAT = 'mypla-backup';
@@ -36,6 +36,7 @@ type BackupItem = {
   source?: string; // 誰の言葉・どこで見たか
   url?: string; // リンク（010 以降）
   favorite?: boolean; // ★（011 以降）
+  ai_card_info?: { name: string; url: string; strength: string } | null; // AI図鑑：どのAIの話か（014 以降）
   images: BackupImage[];
 };
 
@@ -43,8 +44,10 @@ type BackupFile = { format: string; version: number; exportedAt: string; items: 
 
 export type Progress = (done: number, total: number) => void;
 
-type ItemRow = Omit<BackupItem, 'images' | 'shelf_info'> & {
+type ItemRow = Omit<BackupItem, 'images' | 'shelf_info' | 'ai_card_info'> & {
   shelves: { name: string; icon: string; style: string } | null;
+  ai_card_id: string | null;
+  ai_cards: { name: string; url: string; strength: string } | null;
   item_images: { storage_path: string; position: number; mime: string | null; width: number | null; height: number | null; regions: unknown }[] | null;
 };
 
@@ -67,6 +70,7 @@ function readable(items: BackupItem[], exportedAt: Date): string {
     if (item.images.length > 0) lines.push(`画像：${item.images.map((i) => i.file).join('、')}`);
     if (item.source) lines.push(`誰の言葉・どこで：${item.source}`);
     if (item.url) lines.push(`リンク：${item.url}`);
+    if (item.ai_card_info) lines.push(`どのAIの話：${item.ai_card_info.name}`);
     if (item.memo) lines.push(`メモ：${item.memo}`);
     lines.push('');
     lines.push(item.edited_text ?? item.ocr_text);
@@ -83,7 +87,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
     const { data, error } = await supabase
       .from('items')
       .select(
-        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), item_images(storage_path, position, mime, width, height, regions)',
+        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), ai_card_id, ai_cards(name, url, strength), item_images(storage_path, position, mime, width, height, regions)',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -98,7 +102,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
   onProgress(0, rows.length);
   for (const [index, row] of rows.entries()) {
     // 棚は、この利用者の中だけの番号（shelf_id）ではなく、名前・アイコン・見た目で書き出す
-    const { item_images, shelves: shelfInfo, shelf_id: _shelfId, ...rest } = row;
+    const { item_images, shelves: shelfInfo, shelf_id: _shelfId, ai_cards: aiInfo, ai_card_id: _aiCardId, ...rest } = row;
     const images: BackupImage[] = [];
     for (const img of [...(item_images ?? [])].sort((a, b) => a.position - b.position)) {
       const { data: blob, error } = await supabase.storage.from(BUCKET).download(img.storage_path);
@@ -108,7 +112,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
       files[name] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }];
       images.push({ file: name, position: img.position, mime: img.mime, width: img.width, height: img.height, regions: img.regions });
     }
-    items.push({ ...rest, shelf_info: shelfInfo ?? null, images });
+    items.push({ ...rest, shelf_info: shelfInfo ?? null, ai_card_info: aiInfo ?? null, images });
     onProgress(index + 1, rows.length);
   }
 
@@ -188,7 +192,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
   const shelfFor = async (item: BackupItem): Promise<string | null> => {
     const legacy: Record<string, { name: string; icon: string; style: string }> = {
       kotoba: { name: 'ことばの宝箱', icon: '💎', style: 'cards' },
-      ai: { name: 'AI図鑑', icon: '🤖', style: 'list' },
+      ai: { name: 'AI図鑑', icon: '🤖', style: 'ai' },
       learn: { name: '学びノート', icon: '📘', style: 'list' },
       idea: { name: 'アイデア帳', icon: '💡', style: 'list' },
     };
@@ -197,12 +201,30 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     let found = shelves.find((x) => x.name === info.name);
     if (!found) {
       await createShelf(
-        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' ? info.style : 'list' },
+        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' ? info.style : 'list' },
         shelves.reduce((m, x) => Math.max(m, x.sortOrder), 0) + 1,
       );
       const fresh: Shelf[] = await listShelves();
       shelves.splice(0, shelves.length, ...fresh);
       found = shelves.find((x) => x.name === info.name);
+    }
+    return found?.id ?? null;
+  };
+
+  // AIカードも名前で探し、無ければ作る
+  let aiCards: AiCard[] | null = null;
+  const aiCardFor = async (item: BackupItem): Promise<string | null> => {
+    const info = item.ai_card_info;
+    if (!info?.name) return null;
+    if (aiCards === null) aiCards = await listAiCards();
+    let found = aiCards.find((c) => c.name === info.name);
+    if (!found) {
+      await createAiCard(
+        { name: info.name, url: info.url ?? '', strength: info.strength ?? '' },
+        aiCards.reduce((m, c) => Math.max(m, c.sortOrder), 0) + 1,
+      );
+      aiCards = await listAiCards();
+      found = aiCards.find((c) => c.name === info.name);
     }
     return found?.id ?? null;
   };
@@ -220,7 +242,13 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
         } catch {
           shelfId = null; // 棚を作れなくても（上限など）、記事はライブラリーに戻す
         }
-        await restoreOne(item, entries, userId, shelfId);
+        let aiCardId: string | null = null;
+        try {
+          aiCardId = await aiCardFor(item);
+        } catch {
+          aiCardId = null; // カードを作れなくても（上限など）、記事は戻す
+        }
+        await restoreOne(item, entries, userId, shelfId, aiCardId);
         result.added++;
       } catch (e) {
         result.failed.push(`${item.title || 'タイトルなし'}（${(e as Error).message}）`);
@@ -236,6 +264,7 @@ async function restoreOne(
   entries: Record<string, Uint8Array>,
   userId: string,
   shelfId: string | null,
+  aiCardId: string | null,
 ): Promise<void> {
   const row = {
     title: item.title ?? '',
@@ -252,6 +281,7 @@ async function restoreOne(
     source: item.source ?? '',
     url: item.url ?? '',
     favorite: item.favorite ?? false,
+    ai_card_id: aiCardId,
   };
   // 元の番号のまま戻す（2回目の読み込みで二重にならないように）。
   // 別の人がすでに同じ番号を使っていたときだけ、新しい番号で入れる
