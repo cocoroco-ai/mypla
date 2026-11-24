@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
+import { ShelfIcon, ShelfLabel } from './icons';
 import AiHandoff from './AiHandoff';
 import CropEditor from './CropEditor';
 import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, listStudyThemes, type AiCard, type StudyStatus, type StudyTheme, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
@@ -484,7 +485,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             {formatDate(item.createdAt)} に保存
             {currentShelf && (
               <span className="shelf-badge">
-                {currentShelf.icon} {currentShelf.name}
+                <ShelfLabel shelf={currentShelf} size={13} />
               </span>
             )}
             {currentAiCard && <span className="shelf-badge">{currentAiCard.name}</span>}
@@ -578,7 +579,12 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               setTimeout(() => document.querySelector('.shelf-card')?.scrollIntoView({ block: 'start' }), 50);
             }}
           >
-            {currentShelf ? `${currentShelf.icon} 棚を変える${isAiShelf ? '・どのAIの話か選ぶ' : ''}` : '📂 棚に移す'}
+            {currentShelf ? (
+              <span className="shelf-label">
+                <span className="shelf-label-icon"><ShelfIcon emoji={currentShelf.icon} size={18} /></span>
+                <span>棚を変える{isAiShelf ? '・どのAIの話か選ぶ' : ''}</span>
+              </span>
+            ) : '📂 棚に移す'}
           </button>
 
           {viewIndex !== null && imageUrlList[viewIndex] && (
@@ -754,11 +760,11 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                   disabled={shelfBusy}
                   aria-pressed={item.shelfId === sh.id}
                 >
-                  {sh.icon} {sh.name}
+                  <ShelfLabel shelf={sh} size={16} />
                 </button>
               ))}
             </div>
-            {shelves.length === 0 && <p className="hint">棚がありません。ホームの「＋ 棚を追加・編集」で作れます。</p>}
+            {shelves.length === 0 && <p className="hint">棚がありません。ホームの「＋ 私の棚をつくる」で作れます。</p>}
             {item.shelfId && (
               <button className="btn-text" onClick={() => moveToShelf(null)} disabled={shelfBusy}>
                 棚から外す（ライブラリーだけにする）
@@ -767,11 +773,11 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             {(isAiShelf || currentAiCard) && (
               <div className="source-field">
                 <h3 className="source-title">どのAIの話？</h3>
-                <p className="hint">選ぶと、AI図鑑でそのAIのカードを開いたときに、この記事が並びます。</p>
+                <p className="hint">選ぶと、AIラボでそのAIのカードを開いたときに、この記事が並びます。</p>
                 {aiCards === null ? (
                   <p className="hint">読み込んでいます…</p>
                 ) : aiCards.length === 0 ? (
-                  <p className="hint">AIカードがありません。AI図鑑の棚の「＋ AIを追加」で作れます。</p>
+                  <p className="hint">AIカードがありません。AIラボの棚の「＋ AIを追加」で作れます。</p>
                 ) : (
                   <div className="shelf-choices" role="group" aria-label="どのAIの話か">
                     {aiCards.map((c) => (

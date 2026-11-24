@@ -200,13 +200,15 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
   const shelfFor = async (item: BackupItem): Promise<string | null> => {
     const legacy: Record<string, { name: string; icon: string; style: string }> = {
       kotoba: { name: 'ことばの宝箱', icon: '💎', style: 'cards' },
-      ai: { name: 'AI図鑑', icon: '🤖', style: 'ai' },
+      ai: { name: 'AIラボ', icon: '🤖', style: 'ai' },
       learn: { name: '学びノート', icon: '📘', style: 'study' },
-      idea: { name: 'アイデア帳', icon: '💡', style: 'list' },
+      idea: { name: 'アイデアの種', icon: '💡', style: 'list' },
     };
     const info = item.shelf_info ?? (item.shelf ? legacy[item.shelf] : null);
     if (!info) return null;
-    let found = shelves.find((x) => x.name === info.name);
+    // 名前を変えた最初の棚（016）：古い書き出しの名前でも、新しい名前の棚に戻す
+    const renamed: Record<string, string> = { AI図鑑: 'AIラボ', アイデア帳: 'アイデアの種', 写真: 'フォトギャラリー' };
+    let found = shelves.find((x) => x.name === info.name) ?? shelves.find((x) => x.name === renamed[info.name]);
     if (!found) {
       await createShelf(
         { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' || info.style === 'study' ? info.style : 'list' },

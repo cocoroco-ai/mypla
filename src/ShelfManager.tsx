@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { SHELF_MAX, createShelf, deleteShelf, listShelves, updateShelf, type Shelf } from './library';
+import { ShelfIcon, ShelfLabel } from './icons';
 
 /** よく使いそうなアイコン（自分で好きな絵文字を入れることもできる） */
+// 絵文字は保存用の目印。画面では、対応する線画（icons.tsx）で表示する
 const ICONS = ['📁', '💎', '🤖', '📘', '💡', '🍳', '📷', '✈️', '💰', '🏠', '❤️', '🎵', '📚', '🌱', '⭐', '🛒'];
 
 /** 棚の追加・名前やアイコンの変更・並び替え・削除 */
@@ -105,7 +107,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
   return (
     <section>
       <button className="link-back" onClick={onBack} disabled={busy}>← ホーム</button>
-      <h1 className="screen-title">棚の追加・編集</h1>
+      <h1 className="screen-title">私の棚をつくる</h1>
       <p className="hint">
         自分の使い方に合わせて、棚を作れます（{SHELF_MAX}個まで）。棚を削除しても、中の記事は消えずにライブラリーに戻ります。
       </p>
@@ -137,8 +139,9 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
                   className={`icon-choice ${icon === ic ? 'is-on' : ''}`}
                   onClick={() => setIcon(ic)}
                   aria-pressed={icon === ic}
+                  aria-label={ic}
                 >
-                  {ic}
+                  <ShelfIcon emoji={ic} size={22} />
                 </button>
               ))}
             </div>
@@ -160,17 +163,17 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
                 言葉のカード
               </button>
               <button type="button" className={style === 'photos' ? 'is-on' : ''} onClick={() => setStyle('photos')}>
-                写真
+                フォトギャラリー
               </button>
               <button type="button" className={style === 'ai' ? 'is-on' : ''} onClick={() => setStyle('ai')}>
-                AI図鑑
+                AIラボ
               </button>
               <button type="button" className={style === 'study' ? 'is-on' : ''} onClick={() => setStyle('study')}>
                 学びノート
               </button>
             </div>
             <p className="hint">
-              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「写真」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。「AI図鑑」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もこの棚から選ばれます。
+              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「フォトギャラリー」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。「AIラボ」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もこの棚から選ばれます。
             </p>
           </div>
           <div className="button-row">
@@ -191,10 +194,10 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
           {shelves.map((sh, i) => (
             <li key={sh.id} className="shelf-row">
               <span className="shelf-row-name">
-                {sh.icon} {sh.name}
+                <ShelfLabel shelf={sh} size={18} />
                 {sh.style === 'cards' && <span className="shelf-row-style">カード</span>}
-                {sh.style === 'photos' && <span className="shelf-row-style">写真</span>}
-                {sh.style === 'ai' && <span className="shelf-row-style">AI図鑑</span>}
+                {sh.style === 'photos' && <span className="shelf-row-style">フォトギャラリー</span>}
+                {sh.style === 'ai' && <span className="shelf-row-style">AIラボ</span>}
                 {sh.style === 'study' && <span className="shelf-row-style">学びノート</span>}
               </span>
               <span className="shelf-row-actions">

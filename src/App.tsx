@@ -11,6 +11,7 @@ import BackupScreen from './BackupScreen';
 import { AiCardScreen } from './AiZukan';
 import ThemeScreen from './ThemeScreen';
 import { LineIcon, ShelfIcon } from './icons';
+import { placeName } from './themes';
 import { isConfigured, supabase } from './supabase';
 import { addSampleItems } from './samples';
 import {
@@ -282,6 +283,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   const [reread, setReread] = useState<RereadPick | null>(null);
   const [todayWord, setTodayWord] = useState<ItemSummary | null>(null);
   const [todayStudy, setTodayStudy] = useState<ItemSummary | null>(null);
+  const [myName] = useState(() => placeName()); // My Place, My Name.（未設定なら mypla.）
   const [shelves, setShelves] = useState<Shelf[] | null>(null);
   const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
   const [unsortedCount, setUnsortedCount] = useState(0);
@@ -359,7 +361,11 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
 
   return (
     <section>
-      <p className="tagline">集める知識、広がる私。</p>
+      <div className="home-hero">
+        {/* 名前を付けたときだけ大きく出す（未設定なら、今までどおり上の「mypla.」と下のひとことだけ） */}
+        {myName && <h1 className="home-name is-custom">{myName}</h1>}
+        <p className="tagline">集める知識、広がる私。</p>
+      </div>
 
       {(isGuest || quota) && (
         <div className="guest-banner">
@@ -430,7 +436,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
             {todayStudy && (
               <li>
                 <button className="notice-item is-study" onClick={() => onOpen(todayStudy.id)}>
-                  <span className="notice-kind">📘 今日の復習</span>
+                  <span className="notice-kind"><span className="notice-icon"><LineIcon name="bookOpen" size={14} /></span>今日の復習</span>
                   <span className="notice-study">{wordPreview(todayStudy.memo || todayStudy.title)}</span>
                   {todayStudy.memo && <span className="notice-text">{todayStudy.title}</span>}
                 </button>
@@ -439,7 +445,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
             {todayWord && (
               <li>
                 <button className="notice-item is-word" onClick={() => onOpen(todayWord.id)}>
-                  <span className="notice-kind">💎 今日のことば</span>
+                  <span className="notice-kind"><span className="notice-icon"><LineIcon name="gem" size={14} /></span>今日のことば</span>
                   <span className="notice-word">{wordPreview(todayWord.body || todayWord.title)}</span>
                   {todayWord.source && <span className="notice-source">— {todayWord.source}</span>}
                 </button>
@@ -537,7 +543,10 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           </button>
         ))}
         <button className="tile tile-add" onClick={onManageShelves}>
-          <span className="tile-name">＋ 棚を追加・編集</span>
+          <span className="tile-add-icon">
+            <LineIcon name="plus" size={24} />
+          </span>
+          <span className="tile-name">私の棚をつくる</span>
         </button>
       </div>
 
@@ -558,7 +567,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </span>
         <span className="home-theme-text">
           <span className="home-theme-name">mypla.を彩る</span>
-          <span className="home-theme-sub">My Color, My Choice.</span>
+          <span className="home-theme-sub">名前と色を、私らしく。</span>
         </span>
         <span className="home-theme-dots" aria-hidden="true">
           <i /><i /><i />

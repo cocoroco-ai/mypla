@@ -685,7 +685,7 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 }
 .shelf-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .shelf-row-actions .btn-small, .shelf-row-actions .btn-danger-small { min-width: 44px; }
-.tile-add { grid-column: 1 / -1; }
+
 
 /* ノート */
 .note-card { display: grid; gap: 10px; }
@@ -854,7 +854,7 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 }
 .home-theme-text { flex: 1; display: grid; min-width: 0; }
 .home-theme-name { font-weight: 700; color: var(--deep); font-size: 15px; }
-.home-theme-sub { font-size: 12px; color: var(--text-sub); font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.home-theme-sub { font-size: 12px; color: var(--text-sub); }
 .home-theme-dots { display: flex; gap: 4px; }
 .home-theme-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--main); }
 .home-theme-dots i:nth-child(2) { background: var(--mint-strong); }
@@ -963,3 +963,67 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .notice-item.is-study { background: var(--mint); }
 .notice-item.is-study .notice-kind { color: var(--deep); }
 .notice-study { font-size: 16px; font-weight: 700; line-height: 1.55; color: var(--text); }
+
+/* ===== 棚の名前とアイコン（ホーム・棚の中・編集で同じ線画） ===== */
+.shelf-label { display: inline-flex; align-items: center; gap: 0.4em; vertical-align: middle; max-width: 100%; }
+.shelf-label-icon { display: inline-flex; flex: 0 0 auto; color: var(--deep); }
+.shelf-label-icon .emoji-icon { font-size: 1em; }
+.screen-title .shelf-label { gap: 10px; }
+.shelf-badge .shelf-label-icon, .shelf-choice .shelf-label-icon { color: inherit; }
+.icon-choice { display: grid; place-items: center; color: var(--deep); }
+.notice-kind { display: inline-flex; align-items: center; gap: 4px; }
+.notice-icon { display: inline-flex; }
+/* 私の棚をつくる：棚と同じ大きさの、点線のカード */
+.tile.tile-add {
+  min-height: 92px; display: grid; place-items: center; align-content: center; gap: 6px; padding: 12px;
+  border: 1.5px dashed var(--mint-strong); background: transparent; box-shadow: none; color: var(--deep);
+}
+.tile-add-icon { display: inline-flex; color: var(--deep); }
+.tile-add .tile-name { font-size: 14px; font-weight: 700; color: var(--deep); }
+
+/* 棚が空のとき：アイコンとひとことを真ん中に */
+.shelf-empty {
+  display: grid; justify-items: center; gap: 10px; text-align: center;
+  margin: 12px 0; padding: 36px 20px 28px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.shelf-empty-icon { color: var(--deep); margin-bottom: 4px; }
+.shelf-empty-message { margin: 0; font-size: 18px; line-height: 1.7; color: var(--deep); font-weight: 600; }
+.shelf-empty-note { margin: 0; font-size: 14px; color: var(--text-sub); }
+.shelf-empty .hint { margin: 6px 0 0; }
+.shelf-empty.is-cards { background: var(--gold-bg); border-color: var(--gold-line); }
+.shelf-empty.is-cards .shelf-empty-icon { color: var(--gold-icon); }
+.shelf-empty.is-cards .shelf-empty-message { color: var(--gold-text); }
+/* ことばの宝箱の中の見出しアイコンもゴールド */
+.is-cards-title .shelf-label-icon { color: var(--gold-icon); }
+
+/* ===== My Place, My Name. ===== */
+.home-hero { margin: 4px 0 14px; }
+.home-name {
+  margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25; color: var(--deep); letter-spacing: 0.01em;
+  overflow-wrap: anywhere; word-break: break-word;
+}
+.home-name .dot { color: var(--main); }
+.home-name.is-custom { font-size: 24px; letter-spacing: 0.04em; }
+.home-hero .tagline { margin: 4px 0 0; }
+.place-name { display: grid; gap: 8px; margin: 16px 0 0; }
+.place-name-input { text-align: center; font-size: 17px; }
+.place-name .button-row { display: flex; justify-content: center; gap: 8px; }
+.place-name .hint { text-align: center; margin: 0; }
+.theme-preview { margin: 22px 0 0; }
+.theme-preview-label { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--text-sub); text-align: center; letter-spacing: 0.1em; }
+.theme-preview-card {
+  padding: 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); box-shadow: var(--shadow-md);
+}
+.theme-preview-card .tagline { margin: 4px 0 12px; }
+.theme-preview-library {
+  display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px;
+  background: var(--main); color: #fff; font-weight: 700;
+}
+.theme-preview-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.theme-preview-buttons span {
+  display: grid; place-items: center; min-height: 40px; border-radius: 10px; font-size: 14px; font-weight: 700;
+}
+.theme-preview-main { background: var(--main); color: #fff; }
+.theme-preview-sub { background: var(--mint); color: var(--deep); }
+.screen-title.is-cards-title { color: var(--gold-text); }

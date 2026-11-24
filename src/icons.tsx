@@ -1,8 +1,16 @@
-// ホームで使う、線だけのシンプルなアイコン（色は文字の色 currentColor に合わせる）
-// 棚の絵文字に対応する線画があればそれを出し、無ければ絵文字のまま出す
+// 線だけのシンプルなアイコン（色は文字の色 currentColor に合わせる）
+// 棚の絵文字に対応する線画があればそれを出し、無ければ絵文字のまま出す。
+// 棚の名前・アイコン・空のときのメッセージは、ここで一か所にまとめる（ホーム・棚の中・棚の編集で同じものを使う）
+import type { ReactNode } from 'react';
+import type { Shelf } from './library';
 
 const PATHS: Record<string, string> = {
-  library: 'M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.5l3.5 1-4 15-3.5-1',
+  library: 'M16 6l4 14M12 6v14M8 8v12M4 4v16',
+  flask: 'M10 2v7.5a2 2 0 0 1-.2.9L4.7 20.5a1 1 0 0 0 .9 1.5h12.8a1 1 0 0 0 .9-1.5l-5.1-10.1a2 2 0 0 1-.2-.9V2M8.5 2h7M7 16h10',
+  sprout: 'M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8zM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z',
+  images: 'M18 22H4a2 2 0 0 1-2-2V6M22 13l-1.3-1.3a2.4 2.4 0 0 0-3.4 0L11 18M14 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z',
+  bookOpen: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+  plus: 'M12 5v14M5 12h14',
   gem: 'M6 4h12l3 5-9 11L3 9zM3 9h18M9 4l-2 5 5 11 5-11-2-5',
   ai: 'M7 8h10a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3zM12 8V4.5M12 4.5h.01M9 13h.01M15 13h.01M9.5 16.5h5',
   book: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6',
@@ -23,11 +31,15 @@ const PATHS: Record<string, string> = {
 
 const EMOJI_TO_ICON: Record<string, string> = {
   '💎': 'gem',
-  '🤖': 'ai',
-  '📘': 'book',
-  '💡': 'bulb',
+  '🤖': 'flask',
+  '🧪': 'flask',
+  '📘': 'bookOpen',
+  '📖': 'bookOpen',
+  '💡': 'sprout',
   '🍳': 'cook',
-  '📷': 'camera',
+  '📷': 'images',
+  '🖼️': 'images',
+  '🖼': 'images',
   '✈️': 'plane',
   '✈': 'plane',
   '💰': 'money',
@@ -35,7 +47,7 @@ const EMOJI_TO_ICON: Record<string, string> = {
   '❤️': 'heart',
   '❤': 'heart',
   '🎵': 'music',
-  '📚': 'library',
+  '📚': 'book',
   '🌱': 'leaf',
   '⭐': 'star',
   '🛒': 'cart',
@@ -59,5 +71,48 @@ export function ShelfIcon({ emoji, size = 24 }: { emoji: string; size?: number }
     <span className="emoji-icon" aria-hidden="true">
       {emoji}
     </span>
+  );
+}
+
+/** 棚の中の画面の見出し：アイコン＋名前（ホームと同じ線画） */
+export function ShelfLabel({ shelf, size = 20 }: { shelf: Pick<Shelf, 'icon' | 'name'>; size?: number }) {
+  return (
+    <span className="shelf-label">
+      <span className="shelf-label-icon">
+        <ShelfIcon emoji={shelf.icon} size={size} />
+      </span>
+      <span>{shelf.name}</span>
+    </span>
+  );
+}
+
+/** 棚が空のときのひとこと（棚の見た目、またはアイコンで決まる。自分で作った棚は無し） */
+const MESSAGES: Record<string, string> = {
+  library: 'あなたの知識が集まる場所。',
+  gem: '心に残った言葉を、ここに。',
+  flask: '今日の発見を、明日のスキルに。',
+  bookOpen: '小さな学びが、未来の私をつくる。',
+  sprout: 'ふと浮かんだひらめきを、育てていこう。',
+  images: '残しておきたい景色や瞬間を。',
+};
+const STYLE_ICON: Record<Shelf['style'], string | null> = { list: null, cards: 'gem', ai: 'flask', study: 'bookOpen', photos: 'images' };
+
+export function shelfMessage(shelf: Pick<Shelf, 'icon' | 'style'> | null): string {
+  if (!shelf) return MESSAGES.library;
+  return MESSAGES[STYLE_ICON[shelf.style] ?? ''] ?? MESSAGES[EMOJI_TO_ICON[shelf.icon.trim()] ?? ''] ?? '';
+}
+
+/** 棚が空のとき：真ん中に少し大きなアイコン・ひとこと・「まだ登録されていません」 */
+export function ShelfEmpty({ shelf, children }: { shelf: Pick<Shelf, 'icon' | 'style' | 'name'> | null; children?: ReactNode }) {
+  const message = shelfMessage(shelf);
+  return (
+    <div className={`shelf-empty ${shelf?.style === 'cards' ? 'is-cards' : ''}`}>
+      <span className="shelf-empty-icon">
+        {shelf ? <ShelfIcon emoji={shelf.icon} size={44} /> : <LineIcon name="library" size={44} />}
+      </span>
+      {message && <p className="shelf-empty-message">{message}</p>}
+      <p className="shelf-empty-note">まだ登録されていません</p>
+      {children}
+    </div>
   );
 }

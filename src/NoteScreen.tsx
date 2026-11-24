@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listStudyThemes, saveNote, type Shelf, type StudyStatus, type StudyTheme } from './library';
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
+import { ShelfLabel } from './icons';
 
 type Props = {
   onBack: () => void;
@@ -56,7 +57,11 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
     <section>
       <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
       <h1 className="screen-title">{isStudy ? '✎ 学びを書く' : 'ノートを書く'}</h1>
-      {shelf && <p className="hint">保存すると「{shelf.icon} {shelf.name}」に入ります（ライブラリーにも並びます）。</p>}
+      {shelf && (
+        <p className="hint">
+          保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並びます）。
+        </p>
+      )}
 
       {error && <p className="error" role="alert">{error}</p>}
 

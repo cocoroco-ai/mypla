@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
 import { AiCardGrid } from './AiZukan';
 import { StudyBadge, StudyThemeGrid } from './StudyNote';
+import { LineIcon, ShelfEmpty, ShelfLabel } from './icons';
 import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, STUDY_STATUS_LABEL, type AiCard, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
 
 const PAGE = 20;
@@ -179,6 +180,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
   const words = searchWords(query);
   const searching = words.length > 0;
+  // 何も入っていない棚（検索や絞り込みをしていないのに0件）：アイコンとひとことを真ん中に
+  const isEmpty = !loading && !error && total === 0 && !searching && filter === 'all' && !studyTheme && !studyStatus;
 
   if (reviewing) {
     const ordered = [...picked].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -251,13 +254,22 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   return (
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
-      <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
-      {shelfInfo && !isPhotos && !isStudy && (
+      <h1 className={`screen-title ${isWords ? 'is-cards-title' : ''}`}>
+        {shelfInfo ? (
+          <ShelfLabel shelf={shelfInfo} size={24} />
+        ) : (
+          <span className="shelf-label">
+            <span className="shelf-label-icon"><LineIcon name="library" size={24} /></span>
+            <span>ライブラリー</span>
+          </span>
+        )}
+      </h1>
+      {shelfInfo && !isPhotos && !isStudy && !isEmpty && (
         <p className="hint">
           ライブラリーの記事を開いて、下の「📂 棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
       )}
-      {isPhotos && (
+      {isPhotos && !isEmpty && (
         <p className="hint">
           下の「＋ 写真を入れる」で、何枚でもまとめて入れられます（文字は読みません。ライブラリーにも並びます）。
         </p>
@@ -282,6 +294,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               load(0, query);
             }}
           />
+          {!isEmpty && (
+          <>
           <h2 className="ai-zukan-title">
             {studyTheme && studyThemeMap[studyTheme] ? `「${studyThemeMap[studyTheme].name}」の記事` : 'この棚の記事'}
           </h2>
@@ -293,9 +307,13 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               </button>
             ))}
           </div>
+          </>
+          )}
         </>
       )}
 
+      {!isEmpty && (
+      <>
       <form
         className="search"
         role="search"
@@ -357,6 +375,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           {searching ? `「${words.join(' ')}」を含むもの：${total}件` : `全部で ${total}件`}
         </p>
       )}
+      </>
+      )}
 
       {error && (
         <p className="error" role="alert">
@@ -365,7 +385,21 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         </p>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {isEmpty && (
+        <ShelfEmpty shelf={shelfInfo}>
+          <p className="hint center">
+            {isPhotos
+              ? '下の「＋ 写真を入れる」で、写真をまとめて入れられます。'
+              : isStudy
+                ? '上の「✎ 学びを書く」で書くか、ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
+                : shelfInfo
+                  ? 'ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
+                  : '下の「＋ スクショを取り込む」で、ここに集まります。'}
+          </p>
+        </ShelfEmpty>
+      )}
+
+      {!loading && !error && items.length === 0 && !isEmpty && (
         <div className="card empty">
           {searching ? (
             <>
@@ -376,32 +410,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
             </>
           ) : (
             <>
-              {isPhotos ? (
-                <>
-                  <p>まだ写真がありません。</p>
-                  <p className="hint">下の「＋ 写真を入れる」を押して、写真を選んでください。</p>
-                </>
-              ) : isStudy && (studyTheme || studyStatus) ? (
-                <>
-                  <p>この条件の記事はありません。</p>
-                  <p className="hint">上のテーマや「すべて」を押すと、ほかの記事も表示されます。</p>
-                </>
-              ) : isStudy ? (
-                <>
-                  <p>まだ学びノートに記事がありません。</p>
-                  <p className="hint">上の「✎ 学びを書く」で書くか、ライブラリーの記事を開いて「📂 棚に移す」から「{shelfInfo?.name}」を選ぶと、ここに並びます。</p>
-                </>
-              ) : shelfInfo ? (
-                <>
-                  <p>まだ「{shelfInfo.name}」に記事がありません。</p>
-                  <p className="hint">ライブラリーで記事を開き、下の「📂 棚に移す」から「{shelfInfo.name}」を選ぶと、ここに並びます。</p>
-                </>
-              ) : (
-                <>
-                  <p>まだ保存した情報がありません。</p>
-                  <p className="hint">スクショを取り込んで「保存する」を押すと、ここに並びます。</p>
-                </>
-              )}
+              <p>この条件の記事はありません。</p>
+              <p className="hint">「すべて」を押すと、ほかの記事も表示されます。</p>
             </>
           )}
         </div>
@@ -505,7 +515,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                   )}
                   {!shelf && item.shelfId && shelfMap[item.shelfId] && (
                     <span className="shelf-badge">
-                      {shelfMap[item.shelfId].icon} {shelfMap[item.shelfId].name}
+                      <ShelfLabel shelf={shelfMap[item.shelfId]} size={13} />
                     </span>
                   )}
                 </span>

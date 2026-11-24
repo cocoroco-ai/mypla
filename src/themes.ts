@@ -56,3 +56,27 @@ export function applyTheme(id: ThemeId, save = true): void {
     // 保存できなくても、開いている間はこの色のまま
   }
 }
+
+// ---------------------------------------------------------------------
+// My Place, My Name.：自分の知識空間の名前（表示だけの個人設定。この端末に保存。未設定なら mypla.）
+// ---------------------------------------------------------------------
+const NAME_KEY = 'mypla-place-name';
+export const PLACE_NAME_MAX = 24;
+
+export function placeName(): string {
+  try {
+    return (localStorage.getItem(NAME_KEY) ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
+export function savePlaceName(name: string): void {
+  const v = [...name.trim()].slice(0, PLACE_NAME_MAX).join('');
+  try {
+    if (v) localStorage.setItem(NAME_KEY, v);
+    else localStorage.removeItem(NAME_KEY);
+  } catch {
+    // 保存できない端末では、開いている間だけ
+  }
+}
