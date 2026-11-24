@@ -1,15 +1,31 @@
-import { useState } from 'react';
-import { saveNote } from './library';
+import { useEffect, useState } from 'react';
+import { listStudyThemes, saveNote, type Shelf, type StudyStatus, type StudyTheme } from './library';
+import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
+
+type Props = {
+  onBack: () => void;
+  onSaved: (id: string) => void;
+  /** 棚から書いたとき：最初からその棚に置く（学びノートなら、テーマと覚えた印も選べる） */
+  shelf?: Shelf;
+};
 
 /** 思ったことを書くノート（文字だけの記事）。あとから画像やリンクも足せる */
-export default function NoteScreen({ onBack, onSaved }: { onBack: () => void; onSaved: (id: string) => void }) {
+export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
+  const isStudy = shelf?.style === 'study';
+  const [themes, setThemes] = useState<StudyTheme[]>([]);
+  const [themeId, setThemeId] = useState<string | null>(null);
+  const [status, setStatus] = useState<StudyStatus>('yet');
+  const [memo, setMemo] = useState('');
+  useEffect(() => {
+    if (isStudy) listStudyThemes().then(setThemes).catch(() => setThemes([]));
+  }, [isStudy]);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [url, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const dirty = Boolean(title.trim() || text.trim() || url.trim());
+  const dirty = Boolean(title.trim() || text.trim() || url.trim() || memo.trim());
 
   function back() {
     if (dirty && !window.confirm('書いた内容を保存せずに戻りますか？')) return;
@@ -20,7 +36,15 @@ export default function NoteScreen({ onBack, onSaved }: { onBack: () => void; on
     setError('');
     setSaving(true);
     try {
-      const id = await saveNote({ title, text, url });
+      const id = await saveNote({
+        title,
+        text,
+        url,
+        memo,
+        shelfId: shelf?.id ?? null,
+        studyThemeId: isStudy ? themeId : null,
+        studyStatus: status,
+      });
       onSaved(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存できませんでした。');
@@ -30,8 +54,9 @@ export default function NoteScreen({ onBack, onSaved }: { onBack: () => void; on
 
   return (
     <section>
-      <button className="link-back" onClick={back} disabled={saving}>← ホーム</button>
-      <h1 className="screen-title">ノートを書く</h1>
+      <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
+      <h1 className="screen-title">{isStudy ? '✎ 学びを書く' : 'ノートを書く'}</h1>
+      {shelf && <p className="hint">保存すると「{shelf.icon} {shelf.name}」に入ります（ライブラリーにも並びます）。</p>}
 
       {error && <p className="error" role="alert">{error}</p>}
 
@@ -40,13 +65,27 @@ export default function NoteScreen({ onBack, onSaved }: { onBack: () => void; on
           className="note-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="思ったこと、気づいたこと、今日のひとこと…"
+          placeholder={isStudy ? '学んだこと、講座や本の内容、やってみたこと…' : '思ったこと、気づいたこと、今日のひとこと…'}
           autoFocus
           maxLength={20000}
         />
         <p className="hint">
           話して書きたいときは、iPhone のキーボードの🎤（マイク）ボタンを押すと、声で入力できます。
         </p>
+        {isStudy && (
+          <label className="field">
+            <span className="field-label">
+              ひとことメモ（学んだことを1行で） <span className="optional">任意</span>
+            </span>
+            <input
+              className="title-input"
+              value={memo}
+              maxLength={200}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="例：CLAUDE.md にルールを書けば、毎回説明しなくていい"
+            />
+          </label>
+        )}
         <label className="field">
           <span className="field-label">タイトル（空なら1行目から付けます）</span>
           <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />
@@ -64,6 +103,21 @@ export default function NoteScreen({ onBack, onSaved }: { onBack: () => void; on
           />
         </label>
       </div>
+
+      {isStudy && (
+        <div className="card">
+          <h2 className="card-title">テーマ</h2>
+          <StudyThemePicker
+            themes={themes}
+            value={themeId}
+            onChange={setThemeId}
+            onAdded={(t) => setThemes((list) => [...list, t])}
+            disabled={saving}
+          />
+          <h2 className="card-title edit-gap">覚えた？</h2>
+          <StudyStatusPicker value={status} onChange={setStatus} disabled={saving} />
+        </div>
+      )}
 
       <div className="bottom-action">
         <button className="btn-primary btn-large" onClick={save} disabled={saving || !dirty}>

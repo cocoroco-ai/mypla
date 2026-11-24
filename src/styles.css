@@ -20,6 +20,13 @@
   --star-line: #e8c95a;
   --fav-bg: #fffbea;
   --fav-line: #f3e3a6;
+  /* 学びノートの覚えた印（テーマに関係なく同じ色：まだ＝灰、復習中＝琥珀、身についた＝緑） */
+  --st-yet: #57535e;
+  --st-yet-bg: #eeecf1;
+  --st-review: #7a5a10;
+  --st-review-bg: #fff2d1;
+  --st-done: #2e6b45;
+  --st-done-bg: #e2f2e8;
   color-scheme: light;
 }
 
@@ -891,3 +898,68 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
   margin: 32px 0 6px; text-align: center; font-size: 18px; color: var(--deep); letter-spacing: 0.12em;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
 }
+
+/* ===== 学びノート ===== */
+.study-write { width: 100%; margin: 4px 0 6px; }
+.study-themes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.study-themes-head .btn-inline { margin-top: 0; min-height: 36px; }
+.study-theme-grid { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.study-theme-grid > li { display: flex; }
+.study-theme {
+  width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 12px; min-height: 84px;
+  text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+}
+.study-theme.is-on { border-color: var(--main); box-shadow: 0 0 0 1px var(--main) inset; background: var(--mint); }
+.study-theme-name { font-weight: 700; font-size: 15px; color: var(--deep); line-height: 1.35; overflow-wrap: anywhere; }
+.study-bar { display: block; height: 6px; border-radius: 99px; background: var(--mint); overflow: hidden; margin-top: auto; }
+.study-theme.is-on .study-bar { background: var(--surface); }
+.study-bar > i { display: block; height: 100%; background: var(--main); border-radius: 99px; }
+.study-theme-count { font-size: 12px; color: var(--text-sub); }
+.study-theme-add {
+  width: 100%; min-height: 44px; margin-bottom: 4px; border-radius: 12px; font: inherit; font-size: 14px;
+  background: transparent; border: 1px dashed var(--mint-strong); color: var(--deep); cursor: pointer;
+}
+.theme-edit-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.theme-edit-list > li {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+}
+.theme-edit-name { flex: 1; min-width: 0; font-weight: 700; color: var(--deep); overflow-wrap: anywhere; }
+.theme-add-row { display: grid; gap: 8px; margin: 8px 0; }
+.study-filter { grid-template-columns: repeat(4, 1fr); }
+.study-filter button { font-size: 13px; padding: 0 2px; }
+
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 40px; padding: 0 14px; border-radius: 99px; font: inherit; font-size: 14px; cursor: pointer;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line);
+}
+.chip.is-on { background: var(--main); border-color: var(--main); color: #fff; font-weight: 700; }
+.chip.is-add { border-style: dashed; border-color: var(--mint-strong); color: var(--deep); }
+
+.study-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.study-status button {
+  min-height: 46px; border-radius: 12px; font: inherit; font-size: 15px; cursor: pointer;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line);
+}
+.study-status button.is-on { background: var(--main); border-color: var(--main); color: #fff; font-weight: 700; }
+
+.study-badge { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.study-badge.is-yet { background: var(--st-yet-bg); color: var(--st-yet); }
+.study-badge.is-review { background: var(--st-review-bg); color: var(--st-review); }
+.study-badge.is-done { background: var(--st-done-bg); color: var(--st-done); }
+
+.study-memo { font-size: 16px; font-weight: 700; line-height: 1.5; color: var(--text); word-break: break-all; }
+.study-memo.is-title { color: var(--deep); font-weight: 600; }
+.study-meta { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.study-meta-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study-memo-big {
+  margin: 4px 0 12px; padding: 14px; border-radius: 12px; background: var(--mint);
+  font-size: 18px; font-weight: 700; line-height: 1.55; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.study-card .hint { margin-top: 10px; }
+
+.notice-item.is-study { background: var(--mint); }
+.notice-item.is-study .notice-kind { color: var(--deep); }
+.notice-study { font-size: 16px; font-weight: 700; line-height: 1.55; color: var(--text); }

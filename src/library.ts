@@ -175,14 +175,20 @@ export type ItemSummary = {
   isPhoto: boolean; // 写真の棚から入れた写真（文字にする前提ではないので、整理待ちに数えない）
   favorite: boolean; // ★お気に入り
   aiCardId: string | null; // AI図鑑：どのAIの話か（null = ひもづけなし）
+  studyThemeId: string | null; // 学びノート：テーマ（null = なし）
+  studyStatus: StudyStatus; // 学びノート：覚えた印
 };
+
+/** 覚えた印：まだ / 復習中 / 身についた */
+export type StudyStatus = 'yet' | 'review' | 'done';
+export const STUDY_STATUS_LABEL: Record<StudyStatus, string> = { yet: 'まだ', review: '復習中', done: '身についた' };
 
 // ---------------------------------------------------------------------
 // 棚（ライブラリーの記事を、特に分けたいときに置く場所。ライブラリーにも出たまま）
 // ---------------------------------------------------------------------
 
 /** 棚。名前・アイコン・見た目（一覧 / 言葉のカード）は、自分で決められる */
-export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos' | 'ai'; sortOrder: number };
+export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos' | 'ai' | 'study'; sortOrder: number };
 export const SHELF_MAX = 20;
 
 /** 自分の棚を並び順で取る（初めてのときは、最初の4つの棚を作る） */
@@ -292,6 +298,104 @@ export async function countByAiCard(): Promise<Record<string, number>> {
   return counts;
 }
 
+// ---------------------------------------------------------------------
+// 学びノート（テーマ：「Claude Code 講座」「本：○○」など。記事をテーマにひもづけ、覚えた印をつける）
+// ---------------------------------------------------------------------
+
+export type StudyTheme = { id: string; name: string; sortOrder: number };
+export const STUDY_THEME_MAX = 50;
+
+export async function listStudyThemes(): Promise<StudyTheme[]> {
+  const { data, error } = await supabase
+    .from('study_themes')
+    .select('id, name, sort_order')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(toJapaneseError(error.message));
+  return (data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, sortOrder: r.sort_order as number }));
+}
+
+export async function createStudyTheme(name: string, sortOrder: number): Promise<string> {
+  const { data, error } = await supabase
+    .from('study_themes')
+    .insert({ name: name.trim(), sort_order: sortOrder })
+    .select('id')
+    .single();
+  if (error || !data) throw new Error(toJapaneseError(error?.message ?? '追加できませんでした'));
+  return data.id as string;
+}
+
+export async function renameStudyTheme(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('study_themes').update({ name: name.trim() }).eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+/** テーマを削除する（記事は消えずに、テーマのひもづけだけ外れる） */
+export async function deleteStudyTheme(id: string): Promise<void> {
+  const { error } = await supabase.from('study_themes').delete().eq('id', id);
+  if (error) throw new Error(toJapaneseError(error.message));
+}
+
+export type StudyCounts = {
+  /** 覚えた印ごとの件数（この棚の記事） */
+  status: Record<StudyStatus, number>;
+  /** テーマごとの件数と「身についた」の件数 */
+  themes: Record<string, { total: number; done: number }>;
+};
+
+/** 学びノートの棚の件数（ゴミ箱は除く） */
+export async function countStudy(shelfId: string): Promise<StudyCounts> {
+  const result: StudyCounts = { status: { yet: 0, review: 0, done: 0 }, themes: {} };
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('items')
+      .select('study_theme_id, study_status')
+      .is('deleted_at', null)
+      .eq('shelf_id', shelfId)
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(toJapaneseError(error.message));
+    for (const r of data ?? []) {
+      const st = (['yet', 'review', 'done'].includes(r.study_status as string) ? r.study_status : 'yet') as StudyStatus;
+      result.status[st] += 1;
+      const t = r.study_theme_id as string | null;
+      if (t) {
+        const c = (result.themes[t] ??= { total: 0, done: 0 });
+        c.total += 1;
+        if (st === 'done') c.done += 1;
+      }
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return result;
+}
+
+/** 今日の復習：学びノートの棚から、「身についた」以外を日替わりで1件（同じ日は同じもの。全部を1回ずつ出して一回り）。無ければ null */
+export async function pickTodayStudy(shelves: Shelf[]): Promise<ItemSummary | null> {
+  const ids = shelves.filter((s) => s.style === 'study').map((s) => s.id);
+  if (ids.length === 0) return null;
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
+    .in('shelf_id', ids)
+    .neq('study_status', 'done');
+  if (error || !count) return null;
+  const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / DAY_MS);
+  const offset = today % count;
+  const { data } = await supabase
+    .from('items')
+    .select(COLUMNS)
+    .is('deleted_at', null)
+    .in('shelf_id', ids)
+    .neq('study_status', 'done')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .range(offset, offset);
+  const row = (data as Row[] | null)?.[0];
+  return row ? toSummary(row) : null;
+}
+
 export type ItemDetail = ItemSummary & {
   imagePaths: string[]; // すべての画像（並び順）
   images: { id: string; path: string }[]; // 同じ並びで、画像の番号つき
@@ -317,6 +421,8 @@ type Row = {
   source_type: string;
   favorite: boolean;
   ai_card_id: string | null;
+  study_theme_id: string | null;
+  study_status: string | null;
 };
 
 function firstImage(row: Row): string | null {
@@ -341,10 +447,12 @@ function toSummary(row: Row): ItemSummary {
     isPhoto: row.source_type === 'photo',
     favorite: row.favorite ?? false,
     aiCardId: row.ai_card_id ?? null,
+    studyThemeId: row.study_theme_id ?? null,
+    studyStatus: (['yet', 'review', 'done'].includes(row.study_status ?? '') ? row.study_status : 'yet') as StudyStatus,
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite, ai_card_id';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite, ai_card_id, study_theme_id, study_status';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -355,6 +463,7 @@ export async function listItems(
   shelfId: string | null = null,
   onlyFavorite = false,
   aiCardId: string | null = null,
+  study: { themeId?: string | null; status?: StudyStatus | null } = {},
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -365,6 +474,8 @@ export async function listItems(
   if (shelfId) request = request.eq('shelf_id', shelfId);
   if (onlyFavorite) request = request.eq('favorite', true);
   if (aiCardId) request = request.eq('ai_card_id', aiCardId);
+  if (study.themeId) request = request.eq('study_theme_id', study.themeId);
+  if (study.status) request = request.eq('study_status', study.status);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -455,6 +566,8 @@ export type ItemPatch = {
   noteText?: string;
   favorite?: boolean;
   aiCardId?: string | null;
+  studyThemeId?: string | null;
+  studyStatus?: StudyStatus;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -491,6 +604,8 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   if (patch.url !== undefined) values.url = normalizeUrl(patch.url);
   if (patch.favorite !== undefined) values.favorite = patch.favorite;
   if (patch.aiCardId !== undefined) values.ai_card_id = patch.aiCardId;
+  if (patch.studyThemeId !== undefined) values.study_theme_id = patch.studyThemeId;
+  if (patch.studyStatus !== undefined) values.study_status = patch.studyStatus;
   if (patch.noteText !== undefined) {
     values.ocr_text = patch.noteText;
     values.edited_text = null;
@@ -729,7 +844,16 @@ export function normalizeUrl(input: string): string {
 }
 
 /** ノート（文字だけの記事）を保存する。戻り値：記事の id */
-export async function saveNote(input: { title: string; text: string; url: string }): Promise<string> {
+export async function saveNote(input: {
+  title: string;
+  text: string;
+  url: string;
+  memo?: string;
+  /** 学びノートの棚などから書いたとき：最初からその棚に置く */
+  shelfId?: string | null;
+  studyThemeId?: string | null;
+  studyStatus?: StudyStatus;
+}): Promise<string> {
   const text = input.text.trim();
   if (!text && !input.title.trim()) throw new Error('タイトルか本文を書いてください。');
   const { data, error } = await supabase
@@ -739,6 +863,10 @@ export async function saveNote(input: { title: string; text: string; url: string
       ocr_text: text,
       source_type: 'note',
       url: normalizeUrl(input.url),
+      memo: (input.memo ?? '').trim(),
+      shelf_id: input.shelfId ?? null,
+      study_theme_id: input.studyThemeId ?? null,
+      study_status: input.studyStatus ?? 'yet',
     })
     .select('id')
     .single();

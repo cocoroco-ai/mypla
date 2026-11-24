@@ -22,6 +22,7 @@ import {
   listFavorites,
   listShelves,
   pickTodayWord,
+  pickTodayStudy,
   type ItemSummary,
   type Shelf,
   type AiCard,
@@ -44,7 +45,7 @@ type Screen =
   | { name: 'shelf'; shelf: Shelf }
   | { name: 'aicard'; card: AiCard; shelf: Shelf }
   | { name: 'shelves' }
-  | { name: 'note' }
+  | { name: 'note'; shelf?: Shelf }
   | { name: 'trash' }
   | { name: 'backup' }
   | { name: 'theme' };
@@ -174,6 +175,7 @@ export default function App() {
             onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
             onTrash={() => setScreen({ name: 'trash' })}
             onOpenAiCard={(card) => setScreen({ name: 'aicard', card, shelf: screen.shelf })}
+            onWrite={() => setScreen({ name: 'note', shelf: screen.shelf })}
           />
         );
       case 'aicard': {
@@ -190,6 +192,17 @@ export default function App() {
         );
       }
       case 'note':
+        if (screen.shelf) {
+          const shelf = screen.shelf;
+          const toShelf = () => setScreen({ name: 'shelf', shelf });
+          return (
+            <NoteScreen
+              shelf={shelf}
+              onBack={toShelf}
+              onSaved={(id) => setScreen({ name: 'item', id, back: { name: 'shelf', shelf } })}
+            />
+          );
+        }
         return <NoteScreen onBack={home} onSaved={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })} />;
       case 'shelves':
         return <ShelfManager onBack={home} />;
@@ -268,6 +281,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   // お知らせ（ゴミ箱の自動削除が終わってから調べる）
   const [reread, setReread] = useState<RereadPick | null>(null);
   const [todayWord, setTodayWord] = useState<ItemSummary | null>(null);
+  const [todayStudy, setTodayStudy] = useState<ItemSummary | null>(null);
   const [shelves, setShelves] = useState<Shelf[] | null>(null);
   const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
   const [unsortedCount, setUnsortedCount] = useState(0);
@@ -299,9 +313,11 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
       pickReread().catch(() => null),
       countTrashExpiringSoon().catch(() => 0),
       pickTodayWord(shelves).catch(() => null),
-    ]).then(([pick, soonCount, word]) => {
+      pickTodayStudy(shelves).catch(() => null),
+    ]).then(([pick, soonCount, word, study]) => {
       setReread(pick);
       setTodayWord(word);
+      setTodayStudy(study);
       setExpiring(soonCount);
       setNoticesReady(true);
     });
@@ -321,7 +337,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
     usageSummary().then(setUsage).catch(() => setUsage(null));
   }, [isGuest]);
 
-  const hasNotice = backupDays !== null || todayWord !== null || reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
+  const hasNotice = backupDays !== null || todayWord !== null || todayStudy !== null || reread !== null || expiring > 0 || (purged ?? 0) > 0 || guestsCleaned > 0;
 
   // はじめてガイド（お試しの人だけ。「閉じる」を押したら、その端末では出さない）
   const guideKey = `mypla-guide-closed-${userId}`;
@@ -408,6 +424,15 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
                       ? 'まだ一度も書き出していません。万一に備えて、書き出し（バックアップ）をしておきましょう。'
                       : `最後の書き出しから${backupDays}日たちました。そろそろ書き出し（バックアップ）をしておきましょう。`}
                   </span>
+                </button>
+              </li>
+            )}
+            {todayStudy && (
+              <li>
+                <button className="notice-item is-study" onClick={() => onOpen(todayStudy.id)}>
+                  <span className="notice-kind">📘 今日の復習</span>
+                  <span className="notice-study">{wordPreview(todayStudy.memo || todayStudy.title)}</span>
+                  {todayStudy.memo && <span className="notice-text">{todayStudy.title}</span>}
                 </button>
               </li>
             )}

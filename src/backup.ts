@@ -2,7 +2,7 @@
 // どちらも端末の中だけで ZIP を作る・開く（外部のサービスには送らない）。
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { supabase, toJapaneseError } from './supabase';
-import { createAiCard, createShelf, listAiCards, listShelves, type AiCard, type Shelf } from './library';
+import { createAiCard, createShelf, createStudyTheme, listAiCards, listShelves, listStudyThemes, type AiCard, type Shelf, type StudyTheme } from './library';
 
 const BUCKET = 'item-images';
 const FORMAT = 'mypla-backup';
@@ -37,6 +37,8 @@ type BackupItem = {
   url?: string; // リンク（010 以降）
   favorite?: boolean; // ★（011 以降）
   ai_card_info?: { name: string; url: string; strength: string } | null; // AI図鑑：どのAIの話か（014 以降）
+  study_theme_info?: { name: string } | null; // 学びノート：テーマ（015 以降）
+  study_status?: string; // 学びノート：覚えた印 yet / review / done（015 以降）
   images: BackupImage[];
 };
 
@@ -44,10 +46,12 @@ type BackupFile = { format: string; version: number; exportedAt: string; items: 
 
 export type Progress = (done: number, total: number) => void;
 
-type ItemRow = Omit<BackupItem, 'images' | 'shelf_info' | 'ai_card_info'> & {
+type ItemRow = Omit<BackupItem, 'images' | 'shelf_info' | 'ai_card_info' | 'study_theme_info'> & {
   shelves: { name: string; icon: string; style: string } | null;
   ai_card_id: string | null;
   ai_cards: { name: string; url: string; strength: string } | null;
+  study_theme_id: string | null;
+  study_themes: { name: string } | null;
   item_images: { storage_path: string; position: number; mime: string | null; width: number | null; height: number | null; regions: unknown }[] | null;
 };
 
@@ -61,6 +65,8 @@ function stamp(d: Date): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
 }
 
+const STATUS_TEXT: Record<string, string> = { yet: 'まだ', review: '復習中', done: '身についた' };
+
 function readable(items: BackupItem[], exportedAt: Date): string {
   const lines = [`mypla. 書き出し（${exportedAt.toLocaleString('ja-JP')}）　全${items.length}件`, ''];
   for (const item of items) {
@@ -71,6 +77,8 @@ function readable(items: BackupItem[], exportedAt: Date): string {
     if (item.source) lines.push(`誰の言葉・どこで：${item.source}`);
     if (item.url) lines.push(`リンク：${item.url}`);
     if (item.ai_card_info) lines.push(`どのAIの話：${item.ai_card_info.name}`);
+    if (item.study_theme_info) lines.push(`学びのテーマ：${item.study_theme_info.name}`);
+    if (item.shelf_info?.style === 'study') lines.push(`覚えた？：${STATUS_TEXT[item.study_status ?? 'yet'] ?? 'まだ'}`);
     if (item.memo) lines.push(`メモ：${item.memo}`);
     lines.push('');
     lines.push(item.edited_text ?? item.ocr_text);
@@ -87,7 +95,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
     const { data, error } = await supabase
       .from('items')
       .select(
-        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), ai_card_id, ai_cards(name, url, strength), item_images(storage_path, position, mime, width, height, regions)',
+        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), ai_card_id, ai_cards(name, url, strength), study_theme_id, study_status, study_themes(name), item_images(storage_path, position, mime, width, height, regions)',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -102,7 +110,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
   onProgress(0, rows.length);
   for (const [index, row] of rows.entries()) {
     // 棚は、この利用者の中だけの番号（shelf_id）ではなく、名前・アイコン・見た目で書き出す
-    const { item_images, shelves: shelfInfo, shelf_id: _shelfId, ai_cards: aiInfo, ai_card_id: _aiCardId, ...rest } = row;
+    const { item_images, shelves: shelfInfo, shelf_id: _shelfId, ai_cards: aiInfo, ai_card_id: _aiCardId, study_themes: studyInfo, study_theme_id: _studyThemeId, ...rest } = row;
     const images: BackupImage[] = [];
     for (const img of [...(item_images ?? [])].sort((a, b) => a.position - b.position)) {
       const { data: blob, error } = await supabase.storage.from(BUCKET).download(img.storage_path);
@@ -112,7 +120,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
       files[name] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }];
       images.push({ file: name, position: img.position, mime: img.mime, width: img.width, height: img.height, regions: img.regions });
     }
-    items.push({ ...rest, shelf_info: shelfInfo ?? null, ai_card_info: aiInfo ?? null, images });
+    items.push({ ...rest, shelf_info: shelfInfo ?? null, ai_card_info: aiInfo ?? null, study_theme_info: studyInfo ?? null, images });
     onProgress(index + 1, rows.length);
   }
 
@@ -193,7 +201,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     const legacy: Record<string, { name: string; icon: string; style: string }> = {
       kotoba: { name: 'ことばの宝箱', icon: '💎', style: 'cards' },
       ai: { name: 'AI図鑑', icon: '🤖', style: 'ai' },
-      learn: { name: '学びノート', icon: '📘', style: 'list' },
+      learn: { name: '学びノート', icon: '📘', style: 'study' },
       idea: { name: 'アイデア帳', icon: '💡', style: 'list' },
     };
     const info = item.shelf_info ?? (item.shelf ? legacy[item.shelf] : null);
@@ -201,7 +209,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     let found = shelves.find((x) => x.name === info.name);
     if (!found) {
       await createShelf(
-        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' ? info.style : 'list' },
+        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' || info.style === 'study' ? info.style : 'list' },
         shelves.reduce((m, x) => Math.max(m, x.sortOrder), 0) + 1,
       );
       const fresh: Shelf[] = await listShelves();
@@ -229,6 +237,21 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     return found?.id ?? null;
   };
 
+  // 学びのテーマも名前で探し、無ければ作る
+  let studyThemes: StudyTheme[] | null = null;
+  const studyThemeFor = async (item: BackupItem): Promise<string | null> => {
+    const name = item.study_theme_info?.name;
+    if (!name) return null;
+    if (studyThemes === null) studyThemes = await listStudyThemes();
+    let found = studyThemes.find((t) => t.name === name);
+    if (!found) {
+      await createStudyTheme(name, studyThemes.reduce((m, t) => Math.max(m, t.sortOrder), 0) + 1);
+      studyThemes = await listStudyThemes();
+      found = studyThemes.find((t) => t.name === name);
+    }
+    return found?.id ?? null;
+  };
+
   const result: RestoreResult = { added: 0, skipped: 0, failed: [] };
   onProgress(0, backup.items.length);
   for (const [index, item] of backup.items.entries()) {
@@ -248,7 +271,13 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
         } catch {
           aiCardId = null; // カードを作れなくても（上限など）、記事は戻す
         }
-        await restoreOne(item, entries, userId, shelfId, aiCardId);
+        let studyThemeId: string | null = null;
+        try {
+          studyThemeId = await studyThemeFor(item);
+        } catch {
+          studyThemeId = null; // テーマを作れなくても（上限など）、記事は戻す
+        }
+        await restoreOne(item, entries, userId, shelfId, aiCardId, studyThemeId);
         result.added++;
       } catch (e) {
         result.failed.push(`${item.title || 'タイトルなし'}（${(e as Error).message}）`);
@@ -265,6 +294,7 @@ async function restoreOne(
   userId: string,
   shelfId: string | null,
   aiCardId: string | null,
+  studyThemeId: string | null,
 ): Promise<void> {
   const row = {
     title: item.title ?? '',
@@ -282,6 +312,8 @@ async function restoreOne(
     url: item.url ?? '',
     favorite: item.favorite ?? false,
     ai_card_id: aiCardId,
+    study_theme_id: studyThemeId,
+    study_status: ['yet', 'review', 'done'].includes(item.study_status ?? '') ? item.study_status : 'yet',
   };
   // 元の番号のまま戻す（2回目の読み込みで二重にならないように）。
   // 別の人がすでに同じ番号を使っていたときだけ、新しい番号で入れる

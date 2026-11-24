@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
 import { AiCardGrid } from './AiZukan';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, type AiCard, type ItemSummary, type Shelf } from './library';
+import { StudyBadge, StudyThemeGrid } from './StudyNote';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, STUDY_STATUS_LABEL, type AiCard, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
 
 const PAGE = 20;
 
@@ -13,10 +14,11 @@ type Props = {
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
   initialFilter?: 'all' | 'fav' | 'unsorted';
   onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
+  onWrite?: () => void; // 学びノートの棚で、直接書く
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
-export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter, onOpenAiCard }: Props) {
+export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter, onOpenAiCard, onWrite }: Props) {
   const shelfInfo = shelf ?? null;
   const isWords = shelf?.style === 'cards';
   const isPhotos = shelf?.style === 'photos';
@@ -36,6 +38,25 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     if (isAi) loadAiCards();
   }, [isAi]);
   const aiCardMap = Object.fromEntries((aiCards ?? []).map((c) => [c.id, c]));
+  // 学びノートの棚：上にテーマ、覚えた印で絞り込み、一覧はひとことメモを大きく
+  const isStudy = shelf?.style === 'study';
+  const [studyThemes, setStudyThemes] = useState<StudyTheme[] | null>(null);
+  const [studyCounts, setStudyCounts] = useState<StudyCounts | null>(null);
+  const [studyTheme, setStudyTheme] = useState<string | null>(null);
+  const [studyStatus, setStudyStatus] = useState<StudyStatus | null>(null);
+  function loadStudy() {
+    if (!shelf) return;
+    Promise.all([listStudyThemes(), countStudy(shelf.id)])
+      .then(([list, counts]) => {
+        setStudyThemes(list);
+        setStudyCounts(counts);
+      })
+      .catch(() => setStudyThemes([]));
+  }
+  useEffect(() => {
+    if (isStudy) loadStudy();
+  }, [isStudy]);
+  const studyThemeMap = Object.fromEntries((studyThemes ?? []).map((t) => [t.id, t]));
   // 写真の棚：棚から直接、写真を入れる（文字は読まない）
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
@@ -127,7 +148,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav');
+      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav', null, isStudy ? { themeId: studyTheme, status: studyStatus } : {});
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -149,7 +170,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
   useEffect(() => {
     load(0, query);
-  }, [query, filter]);
+  }, [query, filter, studyTheme, studyStatus]);
 
   useEffect(() => {
     countTrash().then(setTrashCount).catch(() => setTrashCount(0));
@@ -231,7 +252,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
       <h1 className="screen-title">{shelfInfo ? `${shelfInfo.icon} ${shelfInfo.name}` : 'ライブラリー'}</h1>
-      {shelfInfo && !isPhotos && (
+      {shelfInfo && !isPhotos && !isStudy && (
         <p className="hint">
           ライブラリーの記事を開いて、下の「📂 棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
@@ -247,6 +268,33 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         <AiCardGrid cards={aiCards} counts={aiCounts} onOpen={(c) => onOpenAiCard?.(c)} onChanged={loadAiCards} />
       )}
       {isAi && <h2 className="ai-zukan-title">この棚の記事</h2>}
+
+      {isStudy && !merging && (
+        <>
+          <button className="btn-primary study-write" onClick={onWrite}>✎ 学びを書く</button>
+          <StudyThemeGrid
+            themes={studyThemes}
+            counts={studyCounts}
+            selected={studyTheme}
+            onSelect={setStudyTheme}
+            onChanged={() => {
+              loadStudy();
+              load(0, query);
+            }}
+          />
+          <h2 className="ai-zukan-title">
+            {studyTheme && studyThemeMap[studyTheme] ? `「${studyThemeMap[studyTheme].name}」の記事` : 'この棚の記事'}
+          </h2>
+          <div className="segmented library-filter study-filter" role="group" aria-label="覚えた印で絞り込む">
+            <button className={studyStatus === null ? 'is-on' : ''} onClick={() => setStudyStatus(null)}>すべて</button>
+            {(['yet', 'review', 'done'] as StudyStatus[]).map((st) => (
+              <button key={st} className={studyStatus === st ? 'is-on' : ''} onClick={() => setStudyStatus(st)}>
+                {STUDY_STATUS_LABEL[st]} {studyCounts?.status[st] ?? ''}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <form
         className="search"
@@ -333,6 +381,16 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                   <p>まだ写真がありません。</p>
                   <p className="hint">下の「＋ 写真を入れる」を押して、写真を選んでください。</p>
                 </>
+              ) : isStudy && (studyTheme || studyStatus) ? (
+                <>
+                  <p>この条件の記事はありません。</p>
+                  <p className="hint">上のテーマや「すべて」を押すと、ほかの記事も表示されます。</p>
+                </>
+              ) : isStudy ? (
+                <>
+                  <p>まだ学びノートに記事がありません。</p>
+                  <p className="hint">上の「✎ 学びを書く」で書くか、ライブラリーの記事を開いて「📂 棚に移す」から「{shelfInfo?.name}」を選ぶと、ここに並びます。</p>
+                </>
               ) : shelfInfo ? (
                 <>
                   <p>まだ「{shelfInfo.name}」に記事がありません。</p>
@@ -415,6 +473,22 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                   <span className="thumb-empty" aria-hidden="true">{item.isNote ? '✎' : '🖼️'}</span>
                 )}
               </span>
+              {isStudy && !merging ? (
+              <span className="item-main">
+                <span className={`study-memo ${item.memo ? '' : 'is-title'}`}>
+                  {item.favorite && <span className="fav-mark">★</span>}
+                  {highlight(item.memo || item.title, words)}
+                </span>
+                <span className="item-meta study-meta">
+                  <span className="study-meta-text">
+                    {[item.studyThemeId && studyThemeMap[item.studyThemeId]?.name, item.memo ? item.title : formatDate(item.createdAt)]
+                      .filter(Boolean)
+                      .join('・')}
+                  </span>
+                  <StudyBadge status={item.studyStatus} />
+                </span>
+              </span>
+              ) : (
               <span className="item-main">
                 <span className="item-title">
                   {item.favorite && <span className="fav-mark">★</span>}
@@ -436,6 +510,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                   )}
                 </span>
               </span>
+              )}
             </button>
           </li>
         ))}

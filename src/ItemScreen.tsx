@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
+import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
 import AiHandoff from './AiHandoff';
 import CropEditor from './CropEditor';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, type AiCard, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, listStudyThemes, type AiCard, type StudyStatus, type StudyTheme, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -258,6 +259,34 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     listAiCards().then(setAiCards).catch(() => setAiCards([]));
   }, [needAiCards, aiCards]);
   const currentAiCard = aiCards?.find((c) => c.id === item?.aiCardId) ?? null;
+  // 学びノート：テーマと覚えた印（学びノートの見た目の棚に置いたときだけ）
+  const isStudyShelf = currentShelf?.style === 'study';
+  const [studyThemes, setStudyThemes] = useState<StudyTheme[] | null>(null);
+  const [studyBusy, setStudyBusy] = useState(false);
+  const needStudy = isStudyShelf || Boolean(item?.studyThemeId);
+  useEffect(() => {
+    if (!needStudy || studyThemes !== null) return;
+    listStudyThemes().then(setStudyThemes).catch(() => setStudyThemes([]));
+  }, [needStudy, studyThemes]);
+  const currentStudyTheme = studyThemes?.find((t) => t.id === item?.studyThemeId) ?? null;
+
+  async function changeStudy(patch: { studyThemeId?: string | null; studyStatus?: StudyStatus }) {
+    if (!item) return;
+    setError('');
+    setStudyBusy(true);
+    try {
+      await updateItem(id, patch);
+      setItem({
+        ...item,
+        ...(patch.studyThemeId !== undefined ? { studyThemeId: patch.studyThemeId } : {}),
+        ...(patch.studyStatus !== undefined ? { studyStatus: patch.studyStatus } : {}),
+      });
+    } catch (e) {
+      setError(`変えられませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setStudyBusy(false);
+    }
+  }
 
   async function pickAiCard(next: AiCard | null) {
     if (!item || (next?.id ?? null) === item.aiCardId) return;
@@ -459,7 +488,10 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               </span>
             )}
             {currentAiCard && <span className="shelf-badge">{currentAiCard.name}</span>}
+            {isStudyShelf && currentStudyTheme && <span className="shelf-badge">{currentStudyTheme.name}</span>}
           </p>
+
+          {isStudyShelf && item.memo && <p className="study-memo-big">{item.memo}</p>}
 
           {imageUrlList.length > 0 && (
             <div className="view-images">
@@ -504,14 +536,36 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             </div>
           )}
 
-          {(item.url || item.memo) && (
+          {(item.url || (item.memo && !isStudyShelf)) && (
             <div className="card view-extra">
               {item.url && (
                 <a className="item-link" href={item.url} target="_blank" rel="noopener noreferrer">
                   🔗 {linkLabel(item.url)}
                 </a>
               )}
-              {item.memo && <p className="view-memo">💬 {item.memo}</p>}
+              {item.memo && !isStudyShelf && <p className="view-memo">💬 {item.memo}</p>}
+            </div>
+          )}
+
+          {isStudyShelf && (
+            <div className="card study-card">
+              <h2 className="card-title">覚えた？</h2>
+              <StudyStatusPicker value={item.studyStatus} onChange={(v) => changeStudy({ studyStatus: v })} disabled={studyBusy} />
+              <h2 className="card-title edit-gap">テーマ</h2>
+              {studyThemes === null ? (
+                <p className="hint">読み込んでいます…</p>
+              ) : (
+                <StudyThemePicker
+                  themes={studyThemes}
+                  value={item.studyThemeId}
+                  onChange={(v) => v !== item.studyThemeId && changeStudy({ studyThemeId: v })}
+                  onAdded={(t) => setStudyThemes((list) => [...(list ?? []), t])}
+                  disabled={studyBusy}
+                />
+              )}
+              {!item.memo && (
+                <p className="hint">「✎ 編集する」のひとことメモに、学んだことを1行で書くと、ここと学びノートの一覧に大きく出ます。</p>
+              )}
             </div>
           )}
 
