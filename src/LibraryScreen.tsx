@@ -269,6 +269,35 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     );
   }
 
+  // 言葉で探す欄（学びノートでは「探す」の枠の中に置く）
+  const searchForm = (
+    <form
+      className="search"
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        (document.activeElement as HTMLElement | null)?.blur(); // スマホのキーボードを閉じる
+        setQuery(input.trim());
+      }}
+    >
+      <span className="search-icon" aria-hidden="true">🔍</span>
+      <input
+        className="search-input"
+        type="search"
+        enterKeyHint="search"
+        placeholder="言葉で探す（タイトル・文章・メモ・誰の言葉）"
+        aria-label="ライブラリーを検索"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
+      {input && (
+        <button type="button" className="search-clear" onClick={() => setInput('')} aria-label="検索をやめる">
+          ×
+        </button>
+      )}
+    </form>
+  );
+
   return (
     <section>
       <button className="link-back" onClick={onBack}>← ホーム</button>
@@ -301,9 +330,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
       {isStudy && !merging && (
         <>
+          <div className="study-panel is-write">
           <h2 className="section-head">書く</h2>
           <button className="btn-primary study-write" onClick={onWrite}>✎ 学びを書く</button>
           <p className="hint">スクショは、下の「＋ スクショを取り込む」から入れられます（ほかのカテゴリーと同じです）。</p>
+          </div>
+          <div className="study-panel is-find">
           <h2 className="section-head">探す</h2>
           <StudyThemeGrid
             themes={studyThemes}
@@ -326,8 +358,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               </button>
             ))}
           </div>
+          <p className="sub-head">言葉で探す</p>
+          {searchForm}
           </>
           )}
+          </div>
         </>
       )}
 
@@ -359,31 +394,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
       {!isEmpty && (
       <>
-      <form
-        className="search"
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          (document.activeElement as HTMLElement | null)?.blur(); // スマホのキーボードを閉じる
-          setQuery(input.trim());
-        }}
-      >
-        <span className="search-icon" aria-hidden="true">🔍</span>
-        <input
-          className="search-input"
-          type="search"
-          enterKeyHint="search"
-          placeholder="言葉で探す（タイトル・文章・メモ・誰の言葉）"
-          aria-label="ライブラリーを検索"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        {input && (
-          <button type="button" className="search-clear" onClick={() => setInput('')} aria-label="検索をやめる">
-            ×
-          </button>
-        )}
-      </form>
+      {!(isStudy && !merging) && searchForm}
 
       {isStudy && !merging && (
         <h2 className="section-head">
