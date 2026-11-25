@@ -157,7 +157,7 @@ export function AiCardGrid({ cards, counts, onOpen, onChanged }: GridProps) {
         </button>
       )}
       <p className="hint">
-        記事を「どのAIの話か」でカードにひもづけると、カードを開いたときに並びます（記事を開いて、下の「棚を変える・どのAIの話か選ぶ」から）。
+        記事を「どのAIの話か」でカードにひもづけると、カードを開いたときに並びます（記事を開いて、下の「分類を変更・どのAIの話か選ぶ」から）。
       </p>
     </div>
   );
@@ -273,7 +273,7 @@ export function AiCardScreen({ card, backLabel, onBack, onOpen, onChanged }: Scr
       {!loading && items.length === 0 && (
         <div className="card empty">
           <p>まだひもづけた記事がありません。</p>
-          <p className="hint">AIラボの棚にある記事を開き、下の「棚を変える・どのAIの話か選ぶ」から「{card.name}」を選ぶと、ここに並びます。</p>
+          <p className="hint">AIラボにある記事を開き、下の「分類を変更・どのAIの話か選ぶ」から「{card.name}」を選ぶと、ここに並びます。</p>
         </div>
       )}
       <ul className="item-list">

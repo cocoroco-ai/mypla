@@ -65,7 +65,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
 
   async function saveEdit() {
     if (!name.trim()) {
-      setError('棚の名前を入れてください。');
+      setError('カテゴリーの名前を入れてください。');
       return;
     }
     const target = editing;
@@ -81,7 +81,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
   async function remove(shelf: Shelf) {
     if (
       !window.confirm(
-        `「${shelf.name}」の棚を削除しますか？\n中の記事は消えずに、ライブラリーだけに戻ります。`,
+        `「${shelf.name}」のカテゴリーを削除しますか？\n中の記事は消えずに、未分類としてライブラリーに残ります。`,
       )
     )
       return;
@@ -107,9 +107,9 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
   return (
     <section>
       <button className="link-back" onClick={onBack} disabled={busy}>← ホーム</button>
-      <h1 className="screen-title">私の棚をつくる</h1>
+      <h1 className="screen-title">カテゴリーの追加・編集</h1>
       <p className="hint">
-        自分の使い方に合わせて、棚を作れます（{SHELF_MAX}個まで）。棚を削除しても、中の記事は消えずにライブラリーに戻ります。
+        自分の使い方に合わせて、カテゴリーを作れます（{SHELF_MAX}個まで）。カテゴリーを削除しても、中の記事は消えずに未分類としてライブラリーに残ります。
       </p>
 
       {error && <p className="error" role="alert">{error}</p>}
@@ -117,7 +117,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
 
       {editing && (
         <div className="card shelf-edit">
-          <h2 className="card-title">{editing === 'new' ? '新しい棚' : '棚を編集'}</h2>
+          <h2 className="card-title">{editing === 'new' ? '新しいカテゴリー' : 'カテゴリーを編集'}</h2>
           <label className="field">
             <span className="field-label">名前（30文字まで）</span>
             <input
@@ -176,7 +176,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
               </button>
             </div>
             <p className="hint">
-              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「フォトギャラリー」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。「AIラボ」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もこの棚から選ばれます。「アイデアの種」は、棚の上でひらめきをひとことで書けて、育ち具合（🌱種・🌿芽・🌷花）を付けられます。
+              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目のカテゴリーからは、ホームの「今日のことば」も選ばれます。「フォトギャラリー」は、正方形の写真を3列に並べ、カテゴリーの中から直接写真を入れられます。「AIラボ」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もここから選ばれます。「アイデアの種」は、一番上でひらめきをひとことで書けて、育ち具合（🌱種・🌿芽・🌷花）を付けられます。
             </p>
           </div>
           <div className="button-row">
@@ -231,7 +231,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
       {!editing && (
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={() => startEdit('new')} disabled={busy || shelves.length >= SHELF_MAX}>
-            {shelves.length >= SHELF_MAX ? `棚は${SHELF_MAX}個までです` : '＋ 新しい棚を作る'}
+            {shelves.length >= SHELF_MAX ? `カテゴリーは${SHELF_MAX}個までです` : '＋ 新しいカテゴリーを作る'}
           </button>
         </div>
       )}

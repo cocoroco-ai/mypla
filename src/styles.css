@@ -1065,3 +1065,51 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .idea-badge.is-flower { background: var(--id-flower-bg); color: var(--id-flower); }
 
 .idea-text { font-size: 16px; font-weight: 700; line-height: 1.5; color: var(--text); word-break: break-all; }
+
+/* ===== ホーム：ライブラリーの大きなカード（中にカテゴリーを2列で並べる） =====
+   背景はテーマのメインカラー。ことばの宝箱だけは全テーマ共通のシャンパンゴールド */
+.lib-panel {
+  display: grid; gap: 12px; padding: 16px; margin: 0 0 16px;
+  background: var(--main); border-radius: 20px; box-shadow: var(--shadow-btn); color: #fff;
+}
+.lib-head {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 2px 4px; border: 0; background: none; color: #fff; font: inherit; text-align: left; cursor: pointer;
+}
+.lib-head-icon { display: inline-flex; color: #fff; }
+.lib-head-name { font-size: 20px; font-weight: 700; letter-spacing: 0.04em; }
+.lib-head-count { font-size: 14px; white-space: nowrap; }
+.lib-head-count strong { font-size: 22px; font-weight: 600; margin-right: 2px; }
+.lib-search {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  min-height: 48px; padding: 0 14px; border: 0; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86); color: var(--deep); font: inherit; font-size: 15px; text-align: left; cursor: pointer;
+}
+.lib-search-icon, .lib-search-arrow { display: inline-flex; color: var(--deep); }
+.lib-search-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lib-cat {
+  display: grid; align-content: start; gap: 6px; min-height: 104px; padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 14px; background: var(--surface);
+  color: var(--deep); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow-sm);
+}
+.lib-cat-icon { display: inline-flex; color: var(--deep); min-height: 26px; align-items: center; }
+.lib-cat-name { font-size: 16px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.lib-cat-count { font-size: 13px; color: var(--text-sub); }
+.lib-cat.is-cards { background: var(--gold-bg); border-color: var(--gold-line); }
+.lib-cat.is-cards .lib-cat-icon { color: var(--gold-icon); }
+.lib-cat.is-cards .lib-cat-name { color: var(--gold-ink); }
+.lib-cat.is-cards .lib-cat-count { color: var(--gold-text); }
+.lib-head:active, .lib-search:active, .lib-cat:active, .lib-add:active { filter: brightness(0.96); }
+.lib-add {
+  min-height: 48px; border: 1.5px dashed rgba(255, 255, 255, 0.7); border-radius: 12px;
+  background: transparent; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.lib-head:focus-visible, .lib-search:focus-visible, .lib-cat:focus-visible, .lib-add:focus-visible {
+  outline: 2px solid #fff; outline-offset: 2px;
+}
+
+/* 取り込み：分類先のカテゴリー（任意） */
+.category-field { margin-bottom: 12px; }
+.category-field .hint { margin: 0; }
+.category-select { appearance: auto; background: var(--surface); }

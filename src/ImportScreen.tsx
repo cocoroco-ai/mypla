@@ -3,11 +3,31 @@ import { cropToRegions, joinRegionList } from './crop';
 import { recognize, type OcrProgress, type OcrResult, type Region, type RemovedLine } from './ocr';
 import RegionSelector from './RegionSelector';
 import ImageViewer from './ImageViewer';
-import { saveImagesOnly, saveItem } from './library';
+import { listShelves, saveImagesOnly, saveItem, type Shelf } from './library';
 
 type Result = OcrResult;
 
-export default function ImportScreen({ onBack }: { onBack: () => void }) {
+/**
+ * スクショを取り込む。
+ *  initialShelf：カテゴリーの中から開いたとき、そのカテゴリーを最初の分類先にする（ホームから開いたときは未分類）。
+ *  分類先は任意。選ばなくても保存でき、どれを選んでもライブラリーにも並ぶ。
+ */
+export default function ImportScreen({
+  onBack,
+  initialShelf = null,
+  backLabel = 'ホーム',
+}: {
+  onBack: () => void;
+  initialShelf?: Shelf | null;
+  backLabel?: string;
+}) {
+  // 分類先（null = 未分類）
+  const [shelfId, setShelfId] = useState<string | null>(initialShelf?.id ?? null);
+  const [shelves, setShelves] = useState<Shelf[]>(initialShelf ? [initialShelf] : []);
+  useEffect(() => {
+    listShelves().then(setShelves).catch(() => undefined);
+  }, []);
+  const shelfName = shelves.find((s) => s.id === shelfId)?.name ?? null;
   const inputRef = useRef<HTMLInputElement>(null);
   const moreRef = useRef<HTMLInputElement>(null);
   const bulkRef = useRef<HTMLInputElement>(null);
@@ -128,7 +148,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     setError(null);
     setBulk({ done: 0, total: images.length });
     try {
-      const r = await saveImagesOnly(images, (done, total) => setBulk({ done, total }));
+      const r = await saveImagesOnly(images, (done, total) => setBulk({ done, total }), shelfId);
       setBulkResult(r);
       window.scrollTo({ top: 0 });
     } finally {
@@ -153,6 +173,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         confidence: result.confidence,
         files,
         regions: useCrop ? null : usedRegions,
+        shelfId,
       });
       setSaved(true);
       window.scrollTo({ top: 0 });
@@ -173,7 +194,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
     const p = (n: number) => String(n).padStart(2, '0');
     const autoTitle = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
     try {
-      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, files: allFiles, regions: null });
+      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, files: allFiles, regions: null, shelfId });
       setTitle(autoTitle);
       setSaved(true);
       window.scrollTo({ top: 0 });
@@ -291,12 +312,12 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
             <p className="error" role="alert">途中で止まりました：{bulkResult.stoppedReason}</p>
           )}
           <p className="hint center">
-            ライブラリーの「整理待ち」にまとまっています。時間のあるときに開いて、「画像の文字を読み取る」で文字にできます。
+            {shelfName ? `「${shelfName}」に分類しました。` : ''}ライブラリーの「文字読み取り待ち」にまとまっています。時間のあるときに開いて、「画像の文字を読み取る」で文字にできます。
           </p>
         </div>
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
-          <button className="btn-text" onClick={onBack}>ホームに戻る</button>
+          <button className="btn-text" onClick={onBack}>{backLabel}に戻る</button>
         </div>
       </section>
     );
@@ -311,21 +332,25 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
           <p className="saved-title">{title.trim() || 'タイトルなし'}</p>
           <p className="hint center">
             {result
-              ? '文章と元の画像を保存しました。ホームの「ライブラリー」から見られます。'
-              : '画像を保存しました。あとでライブラリーから開いて「画像の文字を読み取る」を押すと、文字にして検索できるようになります。'}
+              ? `文章と元の画像を保存しました。${shelfName ? `「${shelfName}」と` : ''}ライブラリーから見られます。`
+              : `画像を保存しました${shelfName ? `（「${shelfName}」に分類）` : ''}。あとでライブラリーから開いて「画像の文字を読み取る」を押すと、文字にして検索できるようになります。`}
           </p>
         </div>
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
-          <button className="btn-text" onClick={onBack}>ホームに戻る</button>
+          <button className="btn-text" onClick={onBack}>{backLabel}に戻る</button>
         </div>
       </section>
     );
   }
 
+  const categoryPicker = (
+    <CategoryPicker shelves={shelves} value={shelfId} onChange={setShelfId} disabled={busy || bulk !== null} />
+  );
+
   return (
     <section>
-      <button className="link-back" onClick={onBack}>← ホーム</button>
+      <button className="link-back" onClick={onBack}>← {backLabel}</button>
       <h1 className="screen-title">スクショを取り込む</h1>
 
       <input
@@ -348,7 +373,7 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         <div className="card bulk-card">
           <h2 className="bulk-title">まとめて取り込む（あとで整理）</h2>
           <p className="hint">
-            何枚かを一度に選んで、文字を読まずに画像だけで保存します。1枚ずつ別の記事になり、ライブラリーの「整理待ち」に入ります。
+            何枚かを一度に選んで、文字を読まずに画像だけで保存します。1枚ずつ別の記事になり、ライブラリーの「文字読み取り待ち」に入ります。下で選んだカテゴリーに分類されます。
           </p>
           <input
             ref={bulkRef}
@@ -364,9 +389,12 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
               <div className="progress"><div style={{ width: `${Math.round((bulk.done / bulk.total) * 100)}%` }} /></div>
             </>
           ) : (
-            <button className="btn-secondary" onClick={() => bulkRef.current?.click()}>
-              画像をまとめて選ぶ
-            </button>
+            <>
+              {categoryPicker}
+              <button className="btn-secondary" onClick={() => bulkRef.current?.click()}>
+                画像をまとめて選ぶ
+              </button>
+            </>
           )}
         </div>
       )}
@@ -576,6 +604,8 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
+      {file && progress === null && <div className="card category-card">{categoryPicker}</div>}
+
       {file && progress === null && (
         <div className="bottom-action">
           {result ? (
@@ -601,6 +631,41 @@ export default function ImportScreen({ onBack }: { onBack: () => void }) {
         </div>
       )}
     </section>
+  );
+}
+
+/** 分類先のカテゴリー（任意）。選ばなければ未分類のまま保存する */
+function CategoryPicker({
+  shelves,
+  value,
+  onChange,
+  disabled,
+}: {
+  shelves: Shelf[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="field category-field">
+      <span className="field-label">
+        カテゴリー <span className="optional">任意</span>
+      </span>
+      <select
+        className="title-input category-select"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        disabled={disabled}
+      >
+        <option value="">未分類</option>
+        {shelves.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <span className="hint">選ばなければ「未分類」で保存します。どれを選んでも、ライブラリーにも並びます。</span>
+    </label>
   );
 }
 

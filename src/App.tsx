@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import ImportScreen from './ImportScreen';
 import LoginScreen from './LoginScreen';
-import LibraryScreen from './LibraryScreen';
+import LibraryScreen, { type LibraryFilter } from './LibraryScreen';
 import ItemScreen from './ItemScreen';
 import TrashScreen from './TrashScreen';
 import ShelfManager from './ShelfManager';
@@ -18,7 +18,7 @@ import {
   countItems,
   cleanupExpiredGuests,
   countByShelf,
-  countUnsorted,
+  countNoShelf,
   backupReminder,
   listFavorites,
   listShelves,
@@ -40,8 +40,8 @@ import {
 
 type Screen =
   | { name: 'home' }
-  | { name: 'import' }
-  | { name: 'library'; filter?: 'all' | 'fav' | 'unsorted' }
+  | { name: 'import'; shelf?: Shelf }
+  | { name: 'library'; filter?: LibraryFilter }
   | { name: 'item'; id: string; back?: Screen }
   | { name: 'shelf'; shelf: Shelf }
   | { name: 'aicard'; card: AiCard; shelf: Shelf }
@@ -143,6 +143,7 @@ export default function App() {
             dataVersion={dataVersion}
             onImport={importShot}
             onLibrary={library}
+            onNoShelf={() => setScreen({ name: 'library', filter: 'noshelf' })}
             onOpen={(id) => setScreen({ name: 'item', id, back: { name: 'home' } })}
             onShelf={(shelf) => setScreen({ name: 'shelf', shelf })}
             onManageShelves={() => setScreen({ name: 'shelves' })}
@@ -154,6 +155,17 @@ export default function App() {
           />
         );
       case 'import':
+        if (screen.shelf) {
+          const shelf = screen.shelf;
+          return (
+            <ImportScreen
+              key={shelf.id}
+              initialShelf={shelf}
+              backLabel={shelf.name}
+              onBack={() => setScreen({ name: 'shelf', shelf })}
+            />
+          );
+        }
         return <ImportScreen onBack={home} />;
       case 'library':
         return (
@@ -172,7 +184,7 @@ export default function App() {
             key={screen.shelf.id}
             shelf={screen.shelf}
             onBack={home}
-            onImport={importShot}
+            onImport={() => setScreen({ name: 'import', shelf: screen.shelf })}
             onOpen={(id) => setScreen({ name: 'item', id, back: screen })}
             onTrash={() => setScreen({ name: 'trash' })}
             onOpenAiCard={(card) => setScreen({ name: 'aicard', card, shelf: screen.shelf })}
@@ -262,6 +274,7 @@ type HomeProps = {
   dataVersion: number;
   onImport: () => void;
   onLibrary: () => void;
+  onNoShelf: () => void;
   onOpen: (id: string) => void;
   onShelf: (shelf: Shelf) => void;
   onManageShelves: () => void;
@@ -272,7 +285,7 @@ type HomeProps = {
   onTheme: () => void;
 };
 
-function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onOpen, onShelf, onManageShelves, onNote, onFavorites, onTrash, onBackup, onTheme }: HomeProps) {
+function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, onLibrary, onNoShelf, onOpen, onShelf, onManageShelves, onNote, onFavorites, onTrash, onBackup, onTheme }: HomeProps) {
   // 保存件数
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -286,7 +299,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   const [myName] = useState(() => placeName()); // My Place, My Name.（未設定なら mypla.）
   const [shelves, setShelves] = useState<Shelf[] | null>(null);
   const [shelfCounts, setShelfCounts] = useState<Record<string, number> | null>(null);
-  const [unsortedCount, setUnsortedCount] = useState(0);
+  const [noShelfCount, setNoShelfCount] = useState<number | null>(null);
   // バックアップの声かけ（null = 不要、-1 = まだ一度も、数字 = 前回からの日数）
   const [backupDays, setBackupDays] = useState<number | null>(null);
   useEffect(() => {
@@ -305,7 +318,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
       })
       .then(setShelfCounts)
       .catch(() => setShelves([]));
-    countUnsorted().then(setUnsortedCount).catch(() => setUnsortedCount(0));
+    countNoShelf().then(setNoShelfCount).catch(() => setNoShelfCount(null));
   }, [dataVersion]);
   const [expiring, setExpiring] = useState(0);
   const [noticesReady, setNoticesReady] = useState(false);
@@ -512,43 +525,44 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </div>
       )}
 
-      <div className="tiles">
-        <button className="tile is-ready tile-library" onClick={onLibrary}>
-          <span className="tile-icon">
+      {/* ライブラリー：すべての保存情報。カテゴリーはその中で、テーマ別に見るための入り口 */}
+      <section className="lib-panel" aria-label="ライブラリー">
+        <button className="lib-head" onClick={onLibrary}>
+          <span className="lib-head-icon">
             <LineIcon name="library" size={28} />
           </span>
-          <span className="tile-text">
-            <span className="tile-name">ライブラリー</span>
-            <span className="tile-note">
-              すべての保管庫{unsortedCount > 0 ? `・整理待ち ${unsortedCount}件` : ''}
-            </span>
-          </span>
-          <span className="tile-count">
-            {count === null ? '開く' : (
+          <span className="lib-head-name">ライブラリー</span>
+          <span className="lib-head-count">
+            {count === null ? '' : (
               <>
                 <strong>{count}</strong>件
               </>
             )}
           </span>
         </button>
-        {(shelves ?? []).map((t) => (
-          <button key={t.id} className={`tile is-ready tile-shelf ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
-            <span className="tile-top">
-              <span className="tile-icon">
-                <ShelfIcon emoji={t.icon} />
-              </span>
-              <span className="tile-count">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : ''}</span>
-            </span>
-            <span className="tile-name">{t.name}</span>
-          </button>
-        ))}
-        <button className="tile tile-add" onClick={onManageShelves}>
-          <span className="tile-add-icon">
-            <LineIcon name="plus" size={24} />
-          </span>
-          <span className="tile-name">私の棚をつくる</span>
+        <button className="lib-search" onClick={onLibrary}>
+          <span className="lib-search-icon"><LineIcon name="search" size={18} /></span>
+          <span className="lib-search-text">すべての情報を検索・閲覧</span>
+          <span className="lib-search-arrow"><LineIcon name="chevronRight" size={18} /></span>
         </button>
-      </div>
+        <div className="lib-grid">
+          <button className="lib-cat" onClick={onNoShelf}>
+            <span className="lib-cat-icon"><LineIcon name="inbox" size={24} /></span>
+            <span className="lib-cat-name">未分類</span>
+            <span className="lib-cat-count">{noShelfCount === null ? '' : `${noShelfCount}件`}</span>
+          </button>
+          {(shelves ?? []).map((t) => (
+            <button key={t.id} className={`lib-cat ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
+              <span className="lib-cat-icon"><ShelfIcon emoji={t.icon} size={24} /></span>
+              <span className="lib-cat-name">{t.name}</span>
+              <span className="lib-cat-count">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : ''}</span>
+            </button>
+          ))}
+        </div>
+        <button className="lib-add" onClick={onManageShelves}>
+          ＋ カテゴリーの追加・編集
+        </button>
+      </section>
 
       {usage && (
         <div className="card usage-card">

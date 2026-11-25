@@ -107,7 +107,7 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     if (!image) return;
     const ok =
       how === 'split'
-        ? window.confirm(`${index + 1}枚目を、この記事から外して別の記事（整理待ち）にしますか？
+        ? window.confirm(`${index + 1}枚目を、この記事から外して別の記事（文字読み取り待ち）にしますか？
 画像は消えません。`)
         : window.confirm(`${index + 1}枚目の画像を完全に削除しますか？
 元に戻せません。`);
@@ -122,7 +122,7 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
       const detail = await reload();
       await loadImages(detail);
       setNotice(
-        (how === 'split' ? '画像を外して、別の記事（整理待ち）にしました。' : '画像を削除しました。') +
+        (how === 'split' ? '画像を外して、別の記事（文字読み取り待ち）にしました。' : '画像を削除しました。') +
           (detail.body ? '文章はそのまま残っています。必要なら「全部の画像から文字を読み取り直す」で作り直せます。' : ''),
       );
     } catch (e) {
@@ -333,10 +333,10 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     try {
       await updateItem(id, { shelfId: next?.id ?? null });
       await reload();
-      setNotice(next ? `「${next.name}」に移しました（ライブラリーにも残っています）。` : '棚から外しました（ライブラリーには残っています）。');
+      setNotice(next ? `「${next.name}」に分類しました（ライブラリーにも並びます）。` : '分類を解除して、未分類にしました（ライブラリーにも並びます）。');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      setError(`移せませんでした。${e instanceof Error ? e.message : ''}`);
+      setError(`分類できませんでした。${e instanceof Error ? e.message : ''}`);
     } finally {
       setShelfBusy(false);
     }
@@ -607,9 +607,9 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             {currentShelf ? (
               <span className="shelf-label">
                 <span className="shelf-label-icon"><ShelfIcon emoji={currentShelf.icon} size={18} /></span>
-                <span>棚を変える{isAiShelf ? '・どのAIの話か選ぶ' : ''}</span>
+                <span>分類を変更{isAiShelf ? '・どのAIの話か選ぶ' : ''}</span>
               </span>
-            ) : '📂 棚に移す'}
+            ) : '📂 分類する'}
           </button>
 
           {viewIndex !== null && imageUrlList[viewIndex] && (
@@ -774,9 +774,9 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </div>
 
           <div className="card shelf-card">
-            <h2 className="card-title">棚に移す <span className="optional">任意</span></h2>
-            <p className="hint">特に分けたいときに選びます。どの棚に移しても、ライブラリーにも残ります。</p>
-            <div className="shelf-choices" role="group" aria-label="置く棚">
+            <h2 className="card-title">カテゴリーを選択 <span className="optional">任意</span></h2>
+            <p className="hint">分けたいときだけ選びます。選ばなければ「未分類」のままです。どれを選んでも、ライブラリーにも並びます。</p>
+            <div className="shelf-choices" role="group" aria-label="カテゴリー">
               {shelves.map((sh) => (
                 <button
                   key={sh.id}
@@ -789,10 +789,10 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 </button>
               ))}
             </div>
-            {shelves.length === 0 && <p className="hint">棚がありません。ホームの「＋ 私の棚をつくる」で作れます。</p>}
+            {shelves.length === 0 && <p className="hint">カテゴリーがありません。ホームの「＋ カテゴリーの追加・編集」で作れます。</p>}
             {item.shelfId && (
               <button className="btn-text" onClick={() => moveToShelf(null)} disabled={shelfBusy}>
-                棚から外す（ライブラリーだけにする）
+                分類を解除（未分類にする）
               </button>
             )}
             {(isAiShelf || currentAiCard) && (
@@ -802,7 +802,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 {aiCards === null ? (
                   <p className="hint">読み込んでいます…</p>
                 ) : aiCards.length === 0 ? (
-                  <p className="hint">AIカードがありません。AIラボの棚の「＋ AIを追加」で作れます。</p>
+                  <p className="hint">AIカードがありません。AIラボの「＋ AIを追加」で作れます。</p>
                 ) : (
                   <div className="shelf-choices" role="group" aria-label="どのAIの話か">
                     {aiCards.map((c) => (
@@ -830,7 +830,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 <h3 className="source-title">
                   誰の言葉・どこで見たか <span className="optional">任意</span>
                 </h3>
-                <p className="hint">分からなければ空欄のままで大丈夫です。棚への移動は、もう保存されています。</p>
+                <p className="hint">分からなければ空欄のままで大丈夫です。カテゴリーの分類は、もう保存されています。</p>
                 <input
                   className="title-input"
                   value={source}

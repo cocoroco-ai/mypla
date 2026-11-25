@@ -13,6 +13,8 @@ export type SaveInput = {
   files: File[]; // 1枚目から順に（続きのスクショをまとめて1件にできる）
   regions: Region[] | null; // 1枚目を範囲を囲んで読んだときだけ。全体を読んだときは null
   photoShelfId?: string; // 写真の棚から入れるとき（種類を「写真」にして、その棚に置く）
+  /** 分類するカテゴリー（任意。null・省略なら未分類）。分類の印を付けるだけで、保存のしかたは変えない */
+  shelfId?: string | null;
 };
 
 type PreparedImage = { blob: Blob; mime: string; ext: string; width: number; height: number };
@@ -128,7 +130,11 @@ export async function saveItem(input: SaveInput): Promise<string> {
       edited_text: input.text !== input.ocrText ? input.text : null,
       ocr_engine: input.confidence === null ? null : 'tesseract.js',
       ocr_confidence: input.confidence === null ? null : Math.round(input.confidence),
-      ...(input.photoShelfId ? { source_type: 'photo', shelf_id: input.photoShelfId } : {}),
+      ...(input.photoShelfId
+        ? { source_type: 'photo', shelf_id: input.photoShelfId }
+        : input.shelfId
+          ? { shelf_id: input.shelfId }
+          : {}),
     })
     .select('id')
     .single();
@@ -496,6 +502,7 @@ export async function listItems(
   aiCardId: string | null = null,
   study: { themeId?: string | null; status?: StudyStatus | null } = {},
   ideaStatus: IdeaStatus | null = null,
+  onlyNoShelf = false,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -504,6 +511,8 @@ export async function listItems(
   // 整理待ち：文字を読まずに画像だけで保存したもの
   if (onlyUnsorted) request = request.eq('ocr_text', '').is('edited_text', null).neq('source_type', 'photo');
   if (shelfId) request = request.eq('shelf_id', shelfId);
+  // 未分類：カテゴリーを指定していないもの（文字の読み取り状態とは関係ない）
+  if (onlyNoShelf) request = request.is('shelf_id', null);
   if (onlyFavorite) request = request.eq('favorite', true);
   if (aiCardId) request = request.eq('ai_card_id', aiCardId);
   if (study.themeId) request = request.eq('study_theme_id', study.themeId);
@@ -911,7 +920,18 @@ export async function saveNote(input: {
   return data.id as string;
 }
 
-/** 整理待ち（画像だけで保存して、まだ文字にしていないもの）の件数 */
+/** 未分類（カテゴリーを指定していないもの）の件数。ゴミ箱は除く */
+export async function countNoShelf(): Promise<number> {
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
+    .is('shelf_id', null);
+  if (error) throw new Error(toJapaneseError(error.message));
+  return count ?? 0;
+}
+
+/** 文字読み取り待ち（画像だけで保存して、まだ文字にしていないもの）の件数 */
 export async function countUnsorted(): Promise<number> {
   const { count, error } = await supabase
     .from('items')
@@ -931,6 +951,7 @@ export async function countUnsorted(): Promise<number> {
 export async function saveImagesOnly(
   files: File[],
   onProgress: (done: number, total: number) => void,
+  shelfId: string | null = null,
 ): Promise<{ saved: number; stoppedReason: string | null }> {
   let saved = 0;
   onProgress(0, files.length);
@@ -939,7 +960,7 @@ export async function saveImagesOnly(
     const p = (n: number) => String(n).padStart(2, '0');
     const title = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
     try {
-      await saveItem({ title, ocrText: '', text: '', confidence: null, files: [file], regions: null });
+      await saveItem({ title, ocrText: '', text: '', confidence: null, files: [file], regions: null, shelfId });
       saved++;
       onProgress(saved, files.length);
     } catch (e) {

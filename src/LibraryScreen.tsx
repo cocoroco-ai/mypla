@@ -4,7 +4,7 @@ import { AiCardGrid } from './AiZukan';
 import { StudyBadge, StudyThemeGrid } from './StudyNote';
 import { IdeaBadge, IdeaQuickWrite } from './IdeaSeed';
 import { LineIcon, ShelfEmpty, ShelfLabel } from './icons';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, countIdeas, IDEA_STATUSES, IDEA_STATUS_EMOJI, IDEA_STATUS_LABEL, STUDY_STATUS_LABEL, type AiCard, type IdeaStatus, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
+import { countNoShelf, countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, countIdeas, IDEA_STATUSES, IDEA_STATUS_EMOJI, IDEA_STATUS_LABEL, STUDY_STATUS_LABEL, type AiCard, type IdeaStatus, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
 
 const PAGE = 20;
 
@@ -14,10 +14,13 @@ type Props = {
   onImport: () => void;
   onTrash: () => void;
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
-  initialFilter?: 'all' | 'fav' | 'unsorted';
+  initialFilter?: LibraryFilter;
   onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
   onWrite?: () => void; // 学びノート・アイデアの種の棚で、直接書く
 };
+
+/** ライブラリーの絞り込み：すべて／★お気に入り／未分類（カテゴリーなし）／文字読み取り待ち（OCRまだ） */
+export type LibraryFilter = 'all' | 'fav' | 'noshelf' | 'unsorted';
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
 export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf, initialFilter, onOpenAiCard, onWrite }: Props) {
@@ -107,11 +110,13 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   const [input, setInput] = useState('');
   const [query, setQuery] = useState(''); // 実際に検索した言葉
   const [trashCount, setTrashCount] = useState(0);
-  // 整理待ち（画像だけで保存して、まだ文字にしていないもの）だけを表示するか
-  // 表示の絞り込み：すべて／★お気に入り／整理待ち
-  const [filter, setFilter] = useState<'all' | 'fav' | 'unsorted'>(initialFilter ?? 'all');
+  // 表示の絞り込み：すべて／★お気に入り／未分類／文字読み取り待ち
+  //  未分類＝カテゴリーを指定していないもの。文字読み取り待ち＝画像だけで保存して、まだ文字にしていないもの（別の考え）
+  const [filter, setFilter] = useState<LibraryFilter>(initialFilter ?? 'all');
   const unsorted = filter === 'unsorted';
+  const noShelf = filter === 'noshelf';
   const [unsortedCount, setUnsortedCount] = useState(0);
+  const [noShelfCount, setNoShelfCount] = useState(0);
   // まとめるモード：チェックを付けた記事を1つにまとめる
   const [merging, setMerging] = useState(false);
   const [picked, setPicked] = useState<ItemSummary[]>([]);
@@ -161,7 +166,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav', null, isStudy ? { themeId: studyTheme, status: studyStatus } : {}, isIdea ? ideaStatus : null);
+      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav', null, isStudy ? { themeId: studyTheme, status: studyStatus } : {}, isIdea ? ideaStatus : null, !shelf && noShelf);
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -188,6 +193,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   useEffect(() => {
     countTrash().then(setTrashCount).catch(() => setTrashCount(0));
     countUnsorted().then(setUnsortedCount).catch(() => setUnsortedCount(0));
+    if (!shelf) countNoShelf().then(setNoShelfCount).catch(() => setNoShelfCount(0));
   }, []);
 
   const words = searchWords(query);
@@ -278,7 +284,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       </h1>
       {shelfInfo && !isPhotos && !isStudy && !isIdea && !isEmpty && (
         <p className="hint">
-          ライブラリーの記事を開いて、下の「📂 棚に移す」で、ここに集められます（ライブラリーにも残ります）。
+          下の「＋ スクショを取り込む」で、このカテゴリーに直接保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます（ライブラリーにも並びます）。
         </p>
       )}
       {isPhotos && !isEmpty && (
@@ -291,7 +297,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       {isAi && !merging && (
         <AiCardGrid cards={aiCards} counts={aiCounts} onOpen={(c) => onOpenAiCard?.(c)} onChanged={loadAiCards} />
       )}
-      {isAi && <h2 className="ai-zukan-title">この棚の記事</h2>}
+      {isAi && <h2 className="ai-zukan-title">このカテゴリーの記事</h2>}
 
       {isStudy && !merging && (
         <>
@@ -309,7 +315,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           {!isEmpty && (
           <>
           <h2 className="ai-zukan-title">
-            {studyTheme && studyThemeMap[studyTheme] ? `「${studyThemeMap[studyTheme].name}」の記事` : 'この棚の記事'}
+            {studyTheme && studyThemeMap[studyTheme] ? `「${studyThemeMap[studyTheme].name}」の記事` : 'このカテゴリーの記事'}
           </h2>
           <div className="segmented library-filter study-filter" role="group" aria-label="覚えた印で絞り込む">
             <button className={studyStatus === null ? 'is-on' : ''} onClick={() => setStudyStatus(null)}>すべて</button>
@@ -336,7 +342,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           />
           {!isEmpty && (
             <>
-              <h2 className="ai-zukan-title">この棚のアイデア</h2>
+              <h2 className="ai-zukan-title">このカテゴリーのアイデア</h2>
               <div className="segmented library-filter idea-filter" role="group" aria-label="育ち具合で絞り込む">
                 <button className={ideaStatus === null ? 'is-on' : ''} onClick={() => setIdeaStatus(null)}>すべて</button>
                 {IDEA_STATUSES.map((st) => (
@@ -392,15 +398,21 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         <div className="segmented library-filter" role="group" aria-label="表示する記事">
           <button className={filter === 'all' ? 'is-on' : ''} onClick={() => setFilter('all')}>すべて</button>
           <button className={filter === 'fav' ? 'is-on' : ''} onClick={() => setFilter('fav')}>★ お気に入り</button>
+          <button className={noShelf ? 'is-on' : ''} onClick={() => setFilter('noshelf')}>
+            未分類 {noShelfCount}
+          </button>
           {(unsortedCount > 0 || unsorted) && (
             <button className={unsorted ? 'is-on' : ''} onClick={() => setFilter('unsorted')}>
-              整理待ち {unsortedCount}
+              文字読み取り待ち {unsortedCount}
             </button>
           )}
         </div>
       )}
       {filter === 'fav' && (
         <p className="hint">★を付けた記事です。記事を開いて、タイトル横の☆を押すと付けられます。</p>
+      )}
+      {noShelf && (
+        <p className="hint">カテゴリーを指定していない記事です。このままでも、検索や閲覧はいつでもできます。</p>
       )}
       {unsorted && (
         <p className="hint">
@@ -429,11 +441,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
             {isPhotos
               ? '下の「＋ 写真を入れる」で、写真をまとめて入れられます。'
               : isIdea
-                ? '上の「💡 ひらめきを書く」にひとこと書くか、ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
+                ? '上の「💡 ひらめきを書く」にひとこと書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
               : isStudy
-                ? '上の「✎ 学びを書く」で書くか、ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
+                ? '上の「✎ 学びを書く」で書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
                 : shelfInfo
-                  ? 'ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
+                  ? '下の「＋ スクショを取り込む」で、ここに保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます。'
                   : '下の「＋ スクショを取り込む」で、ここに集まります。'}
           </p>
         </ShelfEmpty>
