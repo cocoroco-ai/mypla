@@ -301,7 +301,12 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
       {isStudy && !merging && (
         <>
-          <button className="btn-primary study-write" onClick={onWrite}>✎ 学びを書く</button>
+          <h2 className="section-head">書く・入れる</h2>
+          <div className="study-write-row">
+            <button className="btn-primary" onClick={onWrite}>✎ 学びを書く</button>
+            <button className="btn-secondary" onClick={onImport}>＋ スクショを取り込む</button>
+          </div>
+          <h2 className="section-head">探す</h2>
           <StudyThemeGrid
             themes={studyThemes}
             counts={studyCounts}
@@ -314,9 +319,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           />
           {!isEmpty && (
           <>
-          <h2 className="ai-zukan-title">
-            {studyTheme && studyThemeMap[studyTheme] ? `「${studyThemeMap[studyTheme].name}」の記事` : 'このカテゴリーの記事'}
-          </h2>
+          <p className="sub-head">覚えた？で絞り込む</p>
           <div className="segmented library-filter study-filter" role="group" aria-label="覚えた印で絞り込む">
             <button className={studyStatus === null ? 'is-on' : ''} onClick={() => setStudyStatus(null)}>すべて</button>
             {(['yet', 'review', 'done'] as StudyStatus[]).map((st) => (
@@ -384,6 +387,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         )}
       </form>
 
+      {isStudy && !merging && (
+        <h2 className="section-head">
+          記事{studyTheme && studyThemeMap[studyTheme] ? `（${studyThemeMap[studyTheme].name}）` : ''}
+        </h2>
+      )}
       <div className="library-tools">
         {merging ? (
           <p className="hint">まとめたい記事を、2件以上タップして選んでください。画像を押すと大きく見られます。</p>
@@ -443,7 +451,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               : isIdea
                 ? '上の「💡 ひらめきを書く」にひとこと書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
               : isStudy
-                ? '上の「✎ 学びを書く」で書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
+                ? '上の「書く・入れる」から、ここに保存できます。'
                 : shelfInfo
                   ? '下の「＋ スクショを取り込む」で、ここに保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます。'
                   : '下の「＋ スクショを取り込む」で、ここに集まります。'}

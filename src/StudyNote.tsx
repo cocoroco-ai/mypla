@@ -212,17 +212,31 @@ export function StudyThemeGrid({
   return (
     <div className="study-themes">
       <div className="study-themes-head">
-        <h2 className="ai-zukan-title">テーマ</h2>
-        {themes.length > 0 && (
-          <button className="btn-inline" onClick={() => { setEditing((v) => !v); setNotice(''); }}>
-            {editing ? '直すのをやめる' : '✎ テーマを直す'}
-          </button>
-        )}
+        <p className="sub-head">テーマで絞り込む</p>
+        <button
+          className="btn-inline"
+          onClick={() => {
+            setNotice('');
+            if (editing) {
+              setEditing(false);
+              setAdding(false);
+              setName('');
+            } else {
+              setEditing(true);
+              if (themes.length === 0) setAdding(true);
+            }
+          }}
+        >
+          {editing ? '閉じる' : themes.length > 0 ? '✎ テーマの追加・編集' : '＋ テーマを作る'}
+        </button>
       </div>
       {notice && <p className="notice" role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}
-      {themes.length === 0 && !adding && (
-        <p className="hint">「Claude Code 講座」「本：○○」のようなテーマを作ると、記事をテーマごとにまとめられます。</p>
+      {themes.length === 0 && !editing && (
+        <p className="hint">「Claude Code 講座」「本：○○」のようなテーマを作ると、テーマごとに記事を探せます。</p>
+      )}
+      {themes.length > 0 && !editing && (
+        <p className="hint">テーマを押すと、そのテーマの記事だけになります。もう一度押すと元に戻ります。</p>
       )}
 
       {editing ? (
@@ -288,7 +302,7 @@ export function StudyThemeGrid({
           </div>
         </div>
       ) : (
-        !editing && (
+        editing && (
           <button className="study-theme-add" onClick={() => { setAdding(true); setNotice(''); }} disabled={themes.length >= STUDY_THEME_MAX}>
             {themes.length >= STUDY_THEME_MAX ? `テーマは${STUDY_THEME_MAX}個までです` : '＋ テーマを追加'}
           </button>
