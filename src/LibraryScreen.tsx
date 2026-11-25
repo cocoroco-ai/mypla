@@ -49,6 +49,24 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   const [studyCounts, setStudyCounts] = useState<StudyCounts | null>(null);
   const [studyTheme, setStudyTheme] = useState<string | null>(null);
   const [studyStatus, setStudyStatus] = useState<StudyStatus | null>(null);
+  // 「探す」の枠を開いているか（この端末に覚えておく。初めは畳んだ状態）
+  const [findOpen, setFindOpen] = useState(() => {
+    try {
+      return localStorage.getItem('mypla-study-find-open') === '1';
+    } catch {
+      return false;
+    }
+  });
+  function toggleFind() {
+    setFindOpen((v) => {
+      try {
+        localStorage.setItem('mypla-study-find-open', v ? '0' : '1');
+      } catch {
+        /* 覚えられなくても動きは同じ */
+      }
+      return !v;
+    });
+  }
   function loadStudy() {
     if (!shelf) return;
     Promise.all([listStudyThemes(), countStudy(shelf.id)])
@@ -335,8 +353,16 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           <button className="btn-primary study-write" onClick={onWrite}>✎ 学びを書く</button>
           <p className="hint">スクショは、下の「＋ スクショを取り込む」から入れられます（ほかのカテゴリーと同じです）。</p>
           </div>
-          <div className="study-panel is-find">
-          <h2 className="section-head">探す</h2>
+          <div className={`study-panel is-find ${findOpen ? '' : 'is-closed'}`}>
+          <h2 className="section-head">
+            <button type="button" className="panel-toggle" aria-expanded={findOpen} onClick={toggleFind}>
+              <span>探す</span>
+              {!findOpen && (studyTheme || studyStatus || query) && <span className="panel-note">絞り込み中</span>}
+              <span className="panel-toggle-hint">{findOpen ? '畳む ▲' : '開く ▼'}</span>
+            </button>
+          </h2>
+          {findOpen && (
+          <>
           <StudyThemeGrid
             themes={studyThemes}
             counts={studyCounts}
@@ -360,6 +386,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           </div>
           <p className="sub-head">言葉で探す</p>
           {searchForm}
+          </>
+          )}
           </>
           )}
           </div>

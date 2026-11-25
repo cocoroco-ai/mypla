@@ -922,6 +922,17 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .study-panel .segmented { background: var(--surface); }
 .study-panel .segmented button.is-on { background: var(--mint); }
 .study-panel .search { margin-bottom: 4px; }
+.study-panel.is-closed { padding-bottom: 2px; }
+.study-panel.is-closed .section-head { margin-bottom: 10px; }
+.panel-toggle {
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0;
+  border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.panel-note {
+  font-size: 12px; font-weight: 700; color: var(--deep); background: var(--surface);
+  border: 1px solid var(--mint-strong); border-radius: 99px; padding: 1px 8px;
+}
+.panel-toggle-hint { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--deep); }
 .study-themes-head .sub-head { margin: 0; }
 .study-themes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .study-themes-head .btn-inline { margin-top: 0; min-height: 36px; }
