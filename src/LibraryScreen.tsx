@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
 import { AiCardGrid } from './AiZukan';
 import { StudyBadge, StudyThemeGrid } from './StudyNote';
+import { IdeaBadge, IdeaQuickWrite } from './IdeaSeed';
 import { LineIcon, ShelfEmpty, ShelfLabel } from './icons';
-import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, STUDY_STATUS_LABEL, type AiCard, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
+import { countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, countIdeas, IDEA_STATUSES, IDEA_STATUS_EMOJI, IDEA_STATUS_LABEL, STUDY_STATUS_LABEL, type AiCard, type IdeaStatus, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
 
 const PAGE = 20;
 
@@ -15,7 +16,7 @@ type Props = {
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
   initialFilter?: 'all' | 'fav' | 'unsorted';
   onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
-  onWrite?: () => void; // 学びノートの棚で、直接書く
+  onWrite?: () => void; // 学びノート・アイデアの種の棚で、直接書く
 };
 
 /** ライブラリー一覧：保存した情報を新しい順に並べる。上の検索欄で絞り込める */
@@ -58,6 +59,17 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     if (isStudy) loadStudy();
   }, [isStudy]);
   const studyThemeMap = Object.fromEntries((studyThemes ?? []).map((t) => [t.id, t]));
+  // アイデアの種の棚：上にひらめきを書く欄、育ち具合で絞り込み
+  const isIdea = shelf?.style === 'idea';
+  const [ideaCounts, setIdeaCounts] = useState<Record<IdeaStatus, number> | null>(null);
+  const [ideaStatus, setIdeaStatus] = useState<IdeaStatus | null>(null);
+  function loadIdeas() {
+    if (!shelf) return;
+    countIdeas(shelf.id).then(setIdeaCounts).catch(() => setIdeaCounts(null));
+  }
+  useEffect(() => {
+    if (isIdea) loadIdeas();
+  }, [isIdea]);
   // 写真の棚：棚から直接、写真を入れる（文字は読まない）
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
@@ -149,7 +161,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
     setLoading(true);
     setError('');
     try {
-      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav', null, isStudy ? { themeId: studyTheme, status: studyStatus } : {});
+      const page = await listItems(offset, PAGE, q, unsorted, shelf?.id ?? null, filter === 'fav', null, isStudy ? { themeId: studyTheme, status: studyStatus } : {}, isIdea ? ideaStatus : null);
       if (no !== requestNo.current) return;
       setItems((list) => (offset === 0 ? page.items : [...list, ...page.items]));
       setTotal(page.total);
@@ -171,7 +183,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
   useEffect(() => {
     load(0, query);
-  }, [query, filter, studyTheme, studyStatus]);
+  }, [query, filter, studyTheme, studyStatus, ideaStatus]);
 
   useEffect(() => {
     countTrash().then(setTrashCount).catch(() => setTrashCount(0));
@@ -181,7 +193,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   const words = searchWords(query);
   const searching = words.length > 0;
   // 何も入っていない棚（検索や絞り込みをしていないのに0件）：アイコンとひとことを真ん中に
-  const isEmpty = !loading && !error && total === 0 && !searching && filter === 'all' && !studyTheme && !studyStatus;
+  const isEmpty = !loading && !error && total === 0 && !searching && filter === 'all' && !studyTheme && !studyStatus && !ideaStatus;
 
   if (reviewing) {
     const ordered = [...picked].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -264,7 +276,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           </span>
         )}
       </h1>
-      {shelfInfo && !isPhotos && !isStudy && !isEmpty && (
+      {shelfInfo && !isPhotos && !isStudy && !isIdea && !isEmpty && (
         <p className="hint">
           ライブラリーの記事を開いて、下の「📂 棚に移す」で、ここに集められます（ライブラリーにも残ります）。
         </p>
@@ -308,6 +320,32 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
             ))}
           </div>
           </>
+          )}
+        </>
+      )}
+
+      {isIdea && shelf && !merging && (
+        <>
+          <IdeaQuickWrite
+            shelfId={shelf.id}
+            onDetail={onWrite}
+            onSaved={() => {
+              loadIdeas();
+              load(0, query);
+            }}
+          />
+          {!isEmpty && (
+            <>
+              <h2 className="ai-zukan-title">この棚のアイデア</h2>
+              <div className="segmented library-filter idea-filter" role="group" aria-label="育ち具合で絞り込む">
+                <button className={ideaStatus === null ? 'is-on' : ''} onClick={() => setIdeaStatus(null)}>すべて</button>
+                {IDEA_STATUSES.map((st) => (
+                  <button key={st} className={ideaStatus === st ? 'is-on' : ''} onClick={() => setIdeaStatus(st)}>
+                    {IDEA_STATUS_EMOJI[st]}{IDEA_STATUS_LABEL[st]} {ideaCounts?.[st] ?? ''}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}
@@ -390,6 +428,8 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           <p className="hint center">
             {isPhotos
               ? '下の「＋ 写真を入れる」で、写真をまとめて入れられます。'
+              : isIdea
+                ? '上の「💡 ひらめきを書く」にひとこと書くか、ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
               : isStudy
                 ? '上の「✎ 学びを書く」で書くか、ライブラリーの記事を開いて「📂 棚に移す」から選ぶと、ここに並びます。'
                 : shelfInfo
@@ -496,6 +536,20 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                       .join('・')}
                   </span>
                   <StudyBadge status={item.studyStatus} />
+                </span>
+              </span>
+              ) : isIdea && !merging ? (
+              <span className="item-main">
+                <span className="idea-text">
+                  {item.favorite && <span className="fav-mark">★</span>}
+                  {highlight(item.title, words)}
+                </span>
+                {item.body.trim() && item.body.trim() !== item.title && (
+                  <span className="item-body">{highlight(snippet(item, words), words)}</span>
+                )}
+                <span className="item-meta study-meta">
+                  <span className="study-meta-text">{formatDate(item.createdAt)}</span>
+                  <IdeaBadge status={item.ideaStatus} />
                 </span>
               </span>
               ) : (

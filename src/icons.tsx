@@ -95,7 +95,7 @@ const MESSAGES: Record<string, string> = {
   sprout: 'ふと浮かんだひらめきを、育てていこう。',
   images: '残しておきたい景色や瞬間を。',
 };
-const STYLE_ICON: Record<Shelf['style'], string | null> = { list: null, cards: 'gem', ai: 'flask', study: 'bookOpen', photos: 'images' };
+const STYLE_ICON: Record<Shelf['style'], string | null> = { list: null, cards: 'gem', ai: 'flask', study: 'bookOpen', photos: 'images', idea: 'sprout' };
 
 export function shelfMessage(shelf: Pick<Shelf, 'icon' | 'style'> | null): string {
   if (!shelf) return MESSAGES.library;

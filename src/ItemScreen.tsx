@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
+import { IdeaStatusPicker } from './IdeaSeed';
 import { ShelfIcon, ShelfLabel } from './icons';
 import AiHandoff from './AiHandoff';
 import CropEditor from './CropEditor';
-import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, listStudyThemes, type AiCard, type StudyStatus, type StudyTheme, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
+import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, listStudyThemes, type AiCard, type IdeaStatus, type StudyStatus, type StudyTheme, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
 import { recognize, type OcrProgress } from './ocr';
 import { suggestTitle } from './ImportScreen';
 
@@ -289,6 +290,22 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
     }
   }
 
+  // アイデアの種：育ち具合（アイデアの種の見た目の棚に置いたときだけ）
+  const isIdeaShelf = currentShelf?.style === 'idea';
+  async function changeIdea(next: IdeaStatus) {
+    if (!item || next === item.ideaStatus) return;
+    setError('');
+    setStudyBusy(true);
+    try {
+      await updateItem(id, { ideaStatus: next });
+      setItem({ ...item, ideaStatus: next });
+    } catch (e) {
+      setError(`変えられませんでした。${e instanceof Error ? e.message : ''}`);
+    } finally {
+      setStudyBusy(false);
+    }
+  }
+
   async function pickAiCard(next: AiCard | null) {
     if (!item || (next?.id ?? null) === item.aiCardId) return;
     setError('');
@@ -550,9 +567,9 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
 
           {isStudyShelf && (
             <div className="card study-card">
-              <h2 className="card-title">覚えた？</h2>
+              <h2 className="card-title">覚えた？ <span className="optional">任意</span></h2>
               <StudyStatusPicker value={item.studyStatus} onChange={(v) => changeStudy({ studyStatus: v })} disabled={studyBusy} />
-              <h2 className="card-title edit-gap">テーマ</h2>
+              <h2 className="card-title edit-gap">テーマ <span className="optional">任意</span></h2>
               {studyThemes === null ? (
                 <p className="hint">読み込んでいます…</p>
               ) : (
@@ -567,6 +584,14 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
               {!item.memo && (
                 <p className="hint">「✎ 編集する」のひとことメモに、学んだことを1行で書くと、ここと学びノートの一覧に大きく出ます。</p>
               )}
+            </div>
+          )}
+
+          {isIdeaShelf && (
+            <div className="card idea-card">
+              <h2 className="card-title">育ち具合 <span className="optional">任意</span></h2>
+              <IdeaStatusPicker value={item.ideaStatus} onChange={changeIdea} disabled={studyBusy} />
+              <p className="hint">押すだけで変わります。考え始めたら「芽」、やってみたら「花」に。</p>
             </div>
           )}
 
@@ -708,7 +733,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </div>
 
           <div className="card link-card">
-            <h2 className="card-title">リンク</h2>
+            <h2 className="card-title">リンク <span className="optional">任意</span></h2>
             {item.url && !linkEditing && (
               <a className="item-link" href={item.url} target="_blank" rel="noopener noreferrer">
                 🔗 {linkLabel(item.url)}
@@ -749,7 +774,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </div>
 
           <div className="card shelf-card">
-            <h2 className="card-title">棚に移す</h2>
+            <h2 className="card-title">棚に移す <span className="optional">任意</span></h2>
             <p className="hint">特に分けたいときに選びます。どの棚に移しても、ライブラリーにも残ります。</p>
             <div className="shelf-choices" role="group" aria-label="置く棚">
               {shelves.map((sh) => (
@@ -772,7 +797,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             )}
             {(isAiShelf || currentAiCard) && (
               <div className="source-field">
-                <h3 className="source-title">どのAIの話？</h3>
+                <h3 className="source-title">どのAIの話？ <span className="optional">任意</span></h3>
                 <p className="hint">選ぶと、AIラボでそのAIのカードを開いたときに、この記事が並びます。</p>
                 {aiCards === null ? (
                   <p className="hint">読み込んでいます…</p>
@@ -824,7 +849,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
           </div>
 
           <div className="card">
-            <h2 className="card-title">ひとことメモ</h2>
+            <h2 className="card-title">ひとことメモ <span className="optional">任意</span></h2>
             <textarea
               className="memo-input"
               value={memo}

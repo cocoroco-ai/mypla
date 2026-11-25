@@ -171,9 +171,12 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
               <button type="button" className={style === 'study' ? 'is-on' : ''} onClick={() => setStyle('study')}>
                 学びノート
               </button>
+              <button type="button" className={style === 'idea' ? 'is-on' : ''} onClick={() => setStyle('idea')}>
+                アイデアの種
+              </button>
             </div>
             <p className="hint">
-              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「フォトギャラリー」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。「AIラボ」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もこの棚から選ばれます。
+              「言葉のカード」は、ことばの宝箱のように文章を大きく見せます。この見た目の棚からは、ホームの「今日のことば」も選ばれます。「フォトギャラリー」は、正方形の写真を3列に並べ、棚から直接写真を入れられます。「AIラボ」は、AIごとのカード（名前・公式リンク・得意なこと）を上に並べ、記事を「どのAIの話か」でカードにひもづけられます。「学びノート」は、テーマ（講座・本など）ごとにまとめ、覚えた印（まだ・復習中・身についた）を付けられます。ひとことメモが大きく出て、ホームの「今日の復習」もこの棚から選ばれます。「アイデアの種」は、棚の上でひらめきをひとことで書けて、育ち具合（🌱種・🌿芽・🌷花）を付けられます。
             </p>
           </div>
           <div className="button-row">
@@ -199,6 +202,7 @@ export default function ShelfManager({ onBack }: { onBack: () => void }) {
                 {sh.style === 'photos' && <span className="shelf-row-style">フォトギャラリー</span>}
                 {sh.style === 'ai' && <span className="shelf-row-style">AIラボ</span>}
                 {sh.style === 'study' && <span className="shelf-row-style">学びノート</span>}
+                {sh.style === 'idea' && <span className="shelf-row-style">アイデアの種</span>}
               </span>
               <span className="shelf-row-actions">
                 <button className="btn-small" onClick={() => move(i, -1)} disabled={busy || i === 0} aria-label="上へ">

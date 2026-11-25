@@ -39,6 +39,7 @@ type BackupItem = {
   ai_card_info?: { name: string; url: string; strength: string } | null; // AI図鑑：どのAIの話か（014 以降）
   study_theme_info?: { name: string } | null; // 学びノート：テーマ（015 以降）
   study_status?: string; // 学びノート：覚えた印 yet / review / done（015 以降）
+  idea_status?: string; // アイデアの種：育ち具合 seed / sprout / flower（017 以降）
   images: BackupImage[];
 };
 
@@ -66,6 +67,7 @@ function stamp(d: Date): string {
 }
 
 const STATUS_TEXT: Record<string, string> = { yet: 'まだ', review: '復習中', done: '身についた' };
+const IDEA_TEXT: Record<string, string> = { seed: '🌱 種', sprout: '🌿 芽', flower: '🌷 花' };
 
 function readable(items: BackupItem[], exportedAt: Date): string {
   const lines = [`mypla. 書き出し（${exportedAt.toLocaleString('ja-JP')}）　全${items.length}件`, ''];
@@ -78,6 +80,7 @@ function readable(items: BackupItem[], exportedAt: Date): string {
     if (item.url) lines.push(`リンク：${item.url}`);
     if (item.ai_card_info) lines.push(`どのAIの話：${item.ai_card_info.name}`);
     if (item.study_theme_info) lines.push(`学びのテーマ：${item.study_theme_info.name}`);
+    if (item.shelf_info?.style === 'idea') lines.push(`育ち具合：${IDEA_TEXT[item.idea_status ?? 'seed'] ?? '🌱 種'}`);
     if (item.shelf_info?.style === 'study') lines.push(`覚えた？：${STATUS_TEXT[item.study_status ?? 'yet'] ?? 'まだ'}`);
     if (item.memo) lines.push(`メモ：${item.memo}`);
     lines.push('');
@@ -95,7 +98,7 @@ export async function createBackup(onProgress: Progress): Promise<{ file: File; 
     const { data, error } = await supabase
       .from('items')
       .select(
-        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), ai_card_id, ai_cards(name, url, strength), study_theme_id, study_status, study_themes(name), item_images(storage_path, position, mime, width, height, regions)',
+        'id, title, ocr_text, edited_text, memo, ai_allowed, source_type, ocr_engine, ocr_confidence, created_at, updated_at, shelf, source, url, favorite, shelf_id, shelves(name, icon, style), ai_card_id, ai_cards(name, url, strength), study_theme_id, study_status, idea_status, study_themes(name), item_images(storage_path, position, mime, width, height, regions)',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -202,7 +205,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
       kotoba: { name: 'ことばの宝箱', icon: '💎', style: 'cards' },
       ai: { name: 'AIラボ', icon: '🤖', style: 'ai' },
       learn: { name: '学びノート', icon: '📘', style: 'study' },
-      idea: { name: 'アイデアの種', icon: '💡', style: 'list' },
+      idea: { name: 'アイデアの種', icon: '💡', style: 'idea' },
     };
     const info = item.shelf_info ?? (item.shelf ? legacy[item.shelf] : null);
     if (!info) return null;
@@ -211,7 +214,7 @@ export async function restoreBackup(zip: File, onProgress: Progress): Promise<Re
     let found = shelves.find((x) => x.name === info.name) ?? shelves.find((x) => x.name === renamed[info.name]);
     if (!found) {
       await createShelf(
-        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' || info.style === 'study' ? info.style : 'list' },
+        { name: info.name, icon: info.icon, style: info.style === 'cards' || info.style === 'photos' || info.style === 'ai' || info.style === 'study' || info.style === 'idea' ? info.style : 'list' },
         shelves.reduce((m, x) => Math.max(m, x.sortOrder), 0) + 1,
       );
       const fresh: Shelf[] = await listShelves();
@@ -316,6 +319,7 @@ async function restoreOne(
     ai_card_id: aiCardId,
     study_theme_id: studyThemeId,
     study_status: ['yet', 'review', 'done'].includes(item.study_status ?? '') ? item.study_status : 'yet',
+    idea_status: ['seed', 'sprout', 'flower'].includes(item.idea_status ?? '') ? item.idea_status : 'seed',
   };
   // 元の番号のまま戻す（2回目の読み込みで二重にならないように）。
   // 別の人がすでに同じ番号を使っていたときだけ、新しい番号で入れる

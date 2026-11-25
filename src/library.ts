@@ -177,7 +177,18 @@ export type ItemSummary = {
   aiCardId: string | null; // AI図鑑：どのAIの話か（null = ひもづけなし）
   studyThemeId: string | null; // 学びノート：テーマ（null = なし）
   studyStatus: StudyStatus; // 学びノート：覚えた印
+  ideaStatus: IdeaStatus; // アイデアの種：育ち具合
 };
+
+/** 育ち具合：種（思いついた）/ 芽（考え中）/ 花（やってみた） */
+export type IdeaStatus = 'seed' | 'sprout' | 'flower';
+export const IDEA_STATUSES: IdeaStatus[] = ['seed', 'sprout', 'flower'];
+export const IDEA_STATUS_LABEL: Record<IdeaStatus, string> = { seed: '種', sprout: '芽', flower: '花' };
+export const IDEA_STATUS_EMOJI: Record<IdeaStatus, string> = { seed: '🌱', sprout: '🌿', flower: '🌷' };
+export const IDEA_STATUS_NOTE: Record<IdeaStatus, string> = { seed: '思いついた', sprout: '考え中', flower: 'やってみた' };
+function toIdeaStatus(v: string | null | undefined): IdeaStatus {
+  return v === 'sprout' || v === 'flower' ? v : 'seed';
+}
 
 /** 覚えた印：まだ / 復習中 / 身についた */
 export type StudyStatus = 'yet' | 'review' | 'done';
@@ -188,7 +199,7 @@ export const STUDY_STATUS_LABEL: Record<StudyStatus, string> = { yet: 'まだ', 
 // ---------------------------------------------------------------------
 
 /** 棚。名前・アイコン・見た目（一覧 / 言葉のカード）は、自分で決められる */
-export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos' | 'ai' | 'study'; sortOrder: number };
+export type Shelf = { id: string; name: string; icon: string; style: 'list' | 'cards' | 'photos' | 'ai' | 'study' | 'idea'; sortOrder: number };
 export const SHELF_MAX = 20;
 
 /** 自分の棚を並び順で取る（初めてのときは、最初の4つの棚を作る） */
@@ -371,6 +382,24 @@ export async function countStudy(shelfId: string): Promise<StudyCounts> {
 }
 
 /** 今日の復習：学びノートの棚から、「身についた」以外を日替わりで1件（同じ日は同じもの。全部を1回ずつ出して一回り）。無ければ null */
+/** アイデアの種の棚：育ち具合ごとの件数 */
+export async function countIdeas(shelfId: string): Promise<Record<IdeaStatus, number>> {
+  const result: Record<IdeaStatus, number> = { seed: 0, sprout: 0, flower: 0 };
+  await Promise.all(
+    IDEA_STATUSES.map(async (st) => {
+      const { count, error } = await supabase
+        .from('items')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .eq('shelf_id', shelfId)
+        .eq('idea_status', st);
+      if (error) throw new Error(toJapaneseError(error.message));
+      result[st] = count ?? 0;
+    }),
+  );
+  return result;
+}
+
 export async function pickTodayStudy(shelves: Shelf[]): Promise<ItemSummary | null> {
   const ids = shelves.filter((s) => s.style === 'study').map((s) => s.id);
   if (ids.length === 0) return null;
@@ -423,6 +452,7 @@ type Row = {
   ai_card_id: string | null;
   study_theme_id: string | null;
   study_status: string | null;
+  idea_status: string | null;
 };
 
 function firstImage(row: Row): string | null {
@@ -449,10 +479,11 @@ function toSummary(row: Row): ItemSummary {
     aiCardId: row.ai_card_id ?? null,
     studyThemeId: row.study_theme_id ?? null,
     studyStatus: (['yet', 'review', 'done'].includes(row.study_status ?? '') ? row.study_status : 'yet') as StudyStatus,
+    ideaStatus: toIdeaStatus(row.idea_status),
   };
 }
 
-const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite, ai_card_id, study_theme_id, study_status';
+const COLUMNS = 'id, title, ocr_text, edited_text, memo, ocr_confidence, created_at, updated_at, item_images(id, storage_path, position), shelf_id, source, url, source_type, favorite, ai_card_id, study_theme_id, study_status, idea_status';
 
 /** 新しい順に一覧を取る（ゴミ箱は除く）。offset 件目から limit 件 */
 export async function listItems(
@@ -464,6 +495,7 @@ export async function listItems(
   onlyFavorite = false,
   aiCardId: string | null = null,
   study: { themeId?: string | null; status?: StudyStatus | null } = {},
+  ideaStatus: IdeaStatus | null = null,
 ): Promise<{ items: ItemSummary[]; total: number }> {
   let request = supabase
     .from('items')
@@ -476,6 +508,7 @@ export async function listItems(
   if (aiCardId) request = request.eq('ai_card_id', aiCardId);
   if (study.themeId) request = request.eq('study_theme_id', study.themeId);
   if (study.status) request = request.eq('study_status', study.status);
+  if (ideaStatus) request = request.eq('idea_status', ideaStatus);
 
   // 検索：空白で区切った言葉が「すべて」、タイトル・文章・メモのどこかに含まれるものを探す
   for (const word of searchWords(query)) {
@@ -568,6 +601,7 @@ export type ItemPatch = {
   aiCardId?: string | null;
   studyThemeId?: string | null;
   studyStatus?: StudyStatus;
+  ideaStatus?: IdeaStatus;
 };
 
 /** タイトル・文章・メモを書き換える（読み取ったままの文章 ocr_text は変えない） */
@@ -606,6 +640,7 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<void> {
   if (patch.aiCardId !== undefined) values.ai_card_id = patch.aiCardId;
   if (patch.studyThemeId !== undefined) values.study_theme_id = patch.studyThemeId;
   if (patch.studyStatus !== undefined) values.study_status = patch.studyStatus;
+  if (patch.ideaStatus !== undefined) values.idea_status = patch.ideaStatus;
   if (patch.noteText !== undefined) {
     values.ocr_text = patch.noteText;
     values.edited_text = null;
@@ -853,6 +888,7 @@ export async function saveNote(input: {
   shelfId?: string | null;
   studyThemeId?: string | null;
   studyStatus?: StudyStatus;
+  ideaStatus?: IdeaStatus;
 }): Promise<string> {
   const text = input.text.trim();
   if (!text && !input.title.trim()) throw new Error('タイトルか本文を書いてください。');
@@ -867,6 +903,7 @@ export async function saveNote(input: {
       shelf_id: input.shelfId ?? null,
       study_theme_id: input.studyThemeId ?? null,
       study_status: input.studyStatus ?? 'yet',
+      idea_status: input.ideaStatus ?? 'seed',
     })
     .select('id')
     .single();

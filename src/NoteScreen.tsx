@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { listStudyThemes, saveNote, type Shelf, type StudyStatus, type StudyTheme } from './library';
+import { listStudyThemes, saveNote, type IdeaStatus, type Shelf, type StudyStatus, type StudyTheme } from './library';
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
+import { IdeaStatusPicker } from './IdeaSeed';
 import { ShelfLabel } from './icons';
 
 type Props = {
@@ -17,6 +18,8 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   const [themeId, setThemeId] = useState<string | null>(null);
   const [status, setStatus] = useState<StudyStatus>('yet');
   const [memo, setMemo] = useState('');
+  const isIdea = shelf?.style === 'idea';
+  const [ideaStatus, setIdeaStatus] = useState<IdeaStatus>('seed');
   useEffect(() => {
     if (isStudy) listStudyThemes().then(setThemes).catch(() => setThemes([]));
   }, [isStudy]);
@@ -45,6 +48,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         shelfId: shelf?.id ?? null,
         studyThemeId: isStudy ? themeId : null,
         studyStatus: status,
+        ideaStatus,
       });
       onSaved(id);
     } catch (e) {
@@ -56,7 +60,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   return (
     <section>
       <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
-      <h1 className="screen-title">{isStudy ? '✎ 学びを書く' : 'ノートを書く'}</h1>
+      <h1 className="screen-title">{isStudy ? '✎ 学びを書く' : isIdea ? '💡 アイデアを書く' : 'ノートを書く'}</h1>
       {shelf && (
         <p className="hint">
           保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並びます）。
@@ -70,7 +74,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
           className="note-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={isStudy ? '学んだこと、講座や本の内容、やってみたこと…' : '思ったこと、気づいたこと、今日のひとこと…'}
+          placeholder={isStudy ? '学んだこと、講座や本の内容、やってみたこと…' : isIdea ? '思いついたこと、やってみたいこと、くわしいメモ…' : '思ったこと、気づいたこと、今日のひとこと…'}
           autoFocus
           maxLength={20000}
         />
@@ -92,11 +96,11 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
           </label>
         )}
         <label className="field">
-          <span className="field-label">タイトル（空なら1行目から付けます）</span>
-          <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />
+          <span className="field-label">タイトル <span className="optional">任意</span></span>
+          <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="空なら1行目から付けます" />
         </label>
         <label className="field">
-          <span className="field-label">リンク（あれば）</span>
+          <span className="field-label">リンク <span className="optional">任意</span></span>
           <input
             className="title-input"
             type="url"
@@ -111,7 +115,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
 
       {isStudy && (
         <div className="card">
-          <h2 className="card-title">テーマ</h2>
+          <h2 className="card-title">テーマ <span className="optional">任意</span></h2>
           <StudyThemePicker
             themes={themes}
             value={themeId}
@@ -119,8 +123,17 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
             onAdded={(t) => setThemes((list) => [...list, t])}
             disabled={saving}
           />
-          <h2 className="card-title edit-gap">覚えた？</h2>
+          <h2 className="card-title edit-gap">覚えた？ <span className="optional">任意</span></h2>
           <StudyStatusPicker value={status} onChange={setStatus} disabled={saving} />
+          <p className="hint">選ばなければ「まだ」になります。</p>
+        </div>
+      )}
+
+      {isIdea && (
+        <div className="card">
+          <h2 className="card-title">育ち具合 <span className="optional">任意</span></h2>
+          <IdeaStatusPicker value={ideaStatus} onChange={setIdeaStatus} disabled={saving} />
+          <p className="hint">選ばなければ「🌱 種」になります。</p>
         </div>
       )}
 
