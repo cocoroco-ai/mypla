@@ -301,11 +301,9 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
 
       {isStudy && !merging && (
         <>
-          <h2 className="section-head">書く・入れる</h2>
-          <div className="study-write-row">
-            <button className="btn-primary" onClick={onWrite}>✎ 学びを書く</button>
-            <button className="btn-secondary" onClick={onImport}>＋ スクショを取り込む</button>
-          </div>
+          <h2 className="section-head">書く</h2>
+          <button className="btn-primary study-write" onClick={onWrite}>✎ 学びを書く</button>
+          <p className="hint">スクショは、下の「＋ スクショを取り込む」から入れられます（ほかのカテゴリーと同じです）。</p>
           <h2 className="section-head">探す</h2>
           <StudyThemeGrid
             themes={studyThemes}
@@ -451,7 +449,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               : isIdea
                 ? '上の「💡 ひらめきを書く」にひとこと書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
               : isStudy
-                ? '上の「書く・入れる」から、ここに保存できます。'
+                ? '上の「✎ 学びを書く」で書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
                 : shelfInfo
                   ? '下の「＋ スクショを取り込む」で、ここに保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます。'
                   : '下の「＋ スクショを取り込む」で、ここに集まります。'}
