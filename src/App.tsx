@@ -380,6 +380,45 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         <p className="tagline">集める知識、広がる私。</p>
       </div>
 
+      {/* ライブラリー（ホームを開いたらすぐ見えるよう一番上に）：すべての保存情報。カテゴリーはその中で、テーマ別に見るための入り口 */}
+      <section className="lib-panel" aria-label="ライブラリー">
+        <button className="lib-head" onClick={onLibrary}>
+          <span className="lib-head-icon">
+            <LineIcon name="library" size={28} />
+          </span>
+          <span className="lib-head-name">ライブラリー</span>
+          <span className="lib-head-count">
+            {count === null ? '' : (
+              <>
+                <strong>{count}</strong>件
+              </>
+            )}
+          </span>
+        </button>
+        <button className="lib-search" onClick={onLibrary}>
+          <span className="lib-search-icon"><LineIcon name="search" size={18} /></span>
+          <span className="lib-search-text">すべての情報を検索・閲覧</span>
+          <span className="lib-search-arrow"><LineIcon name="chevronRight" size={18} /></span>
+        </button>
+        <div className="lib-grid">
+          <button className="lib-cat" onClick={onNoShelf}>
+            <span className="lib-cat-icon"><LineIcon name="inbox" size={24} /></span>
+            <span className="lib-cat-name">未分類</span>
+            <span className="lib-cat-count">{noShelfCount === null ? '' : `${noShelfCount}件`}</span>
+          </button>
+          {(shelves ?? []).map((t) => (
+            <button key={t.id} className={`lib-cat ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
+              <span className="lib-cat-icon"><ShelfIcon emoji={t.icon} size={24} /></span>
+              <span className="lib-cat-name">{t.name}</span>
+              <span className="lib-cat-count">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : ''}</span>
+            </button>
+          ))}
+        </div>
+        <button className="lib-add" onClick={onManageShelves}>
+          ＋ カテゴリーの追加・編集
+        </button>
+      </section>
+
       {(isGuest || quota) && (
         <div className="guest-banner">
           {isGuest && <strong>お試し中です。</strong>}
@@ -524,45 +563,6 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           )}
         </div>
       )}
-
-      {/* ライブラリー：すべての保存情報。カテゴリーはその中で、テーマ別に見るための入り口 */}
-      <section className="lib-panel" aria-label="ライブラリー">
-        <button className="lib-head" onClick={onLibrary}>
-          <span className="lib-head-icon">
-            <LineIcon name="library" size={28} />
-          </span>
-          <span className="lib-head-name">ライブラリー</span>
-          <span className="lib-head-count">
-            {count === null ? '' : (
-              <>
-                <strong>{count}</strong>件
-              </>
-            )}
-          </span>
-        </button>
-        <button className="lib-search" onClick={onLibrary}>
-          <span className="lib-search-icon"><LineIcon name="search" size={18} /></span>
-          <span className="lib-search-text">すべての情報を検索・閲覧</span>
-          <span className="lib-search-arrow"><LineIcon name="chevronRight" size={18} /></span>
-        </button>
-        <div className="lib-grid">
-          <button className="lib-cat" onClick={onNoShelf}>
-            <span className="lib-cat-icon"><LineIcon name="inbox" size={24} /></span>
-            <span className="lib-cat-name">未分類</span>
-            <span className="lib-cat-count">{noShelfCount === null ? '' : `${noShelfCount}件`}</span>
-          </button>
-          {(shelves ?? []).map((t) => (
-            <button key={t.id} className={`lib-cat ${t.style === 'cards' ? 'is-cards' : ''}`} onClick={() => onShelf(t)}>
-              <span className="lib-cat-icon"><ShelfIcon emoji={t.icon} size={24} /></span>
-              <span className="lib-cat-name">{t.name}</span>
-              <span className="lib-cat-count">{shelfCounts ? `${shelfCounts[t.id] ?? 0}件` : ''}</span>
-            </button>
-          ))}
-        </div>
-        <button className="lib-add" onClick={onManageShelves}>
-          ＋ カテゴリーの追加・編集
-        </button>
-      </section>
 
       {usage && (
         <div className="card usage-card">
