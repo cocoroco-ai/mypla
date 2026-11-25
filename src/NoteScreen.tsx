@@ -95,10 +95,14 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
             />
           </label>
         )}
-        <label className="field">
-          <span className="field-label">タイトル <span className="optional">任意</span></span>
-          <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="空なら1行目から付けます" />
-        </label>
+        {isStudy ? (
+          <p className="hint">本文の1行目が、そのまま記事のタイトルになります（例：1行目に「Claude Code 講座 第3回」）。</p>
+        ) : (
+          <label className="field">
+            <span className="field-label">タイトル <span className="optional">任意</span></span>
+            <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="空なら1行目から付けます" />
+          </label>
+        )}
         <label className="field">
           <span className="field-label">リンク <span className="optional">任意</span></span>
           <input
