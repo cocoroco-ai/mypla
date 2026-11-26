@@ -872,7 +872,7 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 
 /* ホーム：mypla.を彩る */
 .home-theme {
-  width: 100%; display: flex; align-items: center; gap: 12px; margin: 16px 0 0; padding: 12px 14px; min-height: 60px;
+  width: 100%; display: flex; align-items: center; gap: 12px; margin: 36px 0 0; padding: 12px 14px; min-height: 60px;
   text-align: left; font: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
   box-shadow: var(--shadow-sm); cursor: pointer;
 }
