@@ -17,7 +17,7 @@ type Props = {
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
   initialFilter?: LibraryFilter;
   onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
-  onWrite?: () => void; // 学びノート・アイデアの種・ことばの宝箱で、直接書く
+  onWrite?: () => void; // フォトギャラリー以外のカテゴリーで、直接書く
 };
 
 /** ライブラリーの絞り込み：すべて／★お気に入り／未分類（カテゴリーなし）／文字読み取り待ち（OCRまだ） */
@@ -342,10 +342,15 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           </span>
         )}
       </h1>
-      {shelfInfo && !isPhotos && !isStudy && !isIdea && !isWords && !isEmpty && (
-        <p className="hint">
-          下の「＋ スクショを取り込む」で、このカテゴリーに直接保存できます。ライブラリーの記事を開いて「分類する」からも集められます（ライブラリーにも並びます）。
-        </p>
+      {/* AIラボ・自分で作ったカテゴリー：その場でノートを書いて入れる */}
+      {shelfInfo && !isPhotos && !isStudy && !isIdea && !isWords && !merging && (
+        <div className="study-panel is-write">
+          <h2 className="section-head">書く</h2>
+          <button className="btn-primary study-write" onClick={onWrite}>✎ ノートを書く</button>
+          <p className="hint">
+            スクショは、下の「＋ スクショを取り込む」から入れられます。ライブラリーの記事を開いて「分類する」からも集められます（ライブラリーにも並びます）。
+          </p>
+        </div>
       )}
       {isPhotos && !isEmpty && (
         <p className="hint">
