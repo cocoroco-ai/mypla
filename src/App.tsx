@@ -493,7 +493,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
                 <button className="notice-item is-study" onClick={() => onOpen(todayStudy.id)}>
                   <span className="notice-kind"><span className="notice-icon"><LineIcon name="bookOpen" size={14} /></span>今日の復習</span>
                   <span className="notice-study">{wordPreview(todayStudy.memo || todayStudy.title)}</span>
-                  {todayStudy.memo && <span className="notice-text">{todayStudy.title}</span>}
+                  {todayStudy.memo && todayStudy.memo !== todayStudy.title && <span className="notice-text">{todayStudy.title}</span>}
                 </button>
               </li>
             )}
