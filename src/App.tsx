@@ -621,8 +621,17 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </span>
       </button>
 
-      <button className="home-link" onClick={onBackup}>
-        データの書き出し・読み込み（バックアップ）
+      <button className="home-theme is-backup" onClick={onBackup}>
+        <span className="home-theme-icon">
+          <LineIcon name="backup" size={22} />
+        </span>
+        <span className="home-theme-text">
+          <span className="home-theme-name">データのバックアップ</span>
+          <span className="home-theme-sub">書き出し・読み込み。万一に備えてファイルに保存</span>
+        </span>
+        <span className="home-theme-arrow" aria-hidden="true">
+          <LineIcon name="chevronRight" size={18} />
+        </span>
       </button>
 
       {/* お知らせの説明（いつ・何が出るか）。ふだんは畳んでおく */}

@@ -1372,3 +1372,6 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 /* ホームの欄外（mypla.を彩る・書き出し・説明）：本筋から離して、細い線で区切る */
 .home-footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); }
 .home-footer .home-theme { margin-top: 0; }
+.home-footer .home-theme.is-backup { margin-top: 10px; }
+.home-theme-arrow { flex: none; display: inline-flex; color: var(--deep); }
+.home-footer .notice-help { margin-top: 10px; }
