@@ -908,6 +908,13 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 
 /* ===== 学びノート ===== */
 .study-write { width: 100%; margin: 4px 0 6px; }
+/* 学びを書く：保存ボタンは見出しの横と、いちばん下（画面に固定しない） */
+.note-head { display: flex; align-items: center; gap: 10px; }
+.note-head .screen-title { flex: 1; min-width: 0; }
+.note-head-save { flex: none; min-height: 44px; padding: 0 16px; }
+.study-note-input { min-height: 28vh; }
+.study-memo-field .hint { margin: 6px 0 0; }
+.note-end-save { width: 100%; margin: 4px 0 24px; }
 .section-head {
   font-size: 16px; color: var(--deep); margin: 22px 0 10px; padding-left: 10px;
   border-left: 4px solid var(--main); line-height: 1.4;

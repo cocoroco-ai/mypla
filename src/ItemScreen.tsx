@@ -509,7 +509,7 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             {isStudyShelf && currentStudyTheme && <span className="shelf-badge">{currentStudyTheme.name}</span>}
           </p>
 
-          {isStudyShelf && item.memo && <p className="study-memo-big">{item.memo}</p>}
+          {isStudyShelf && item.memo && item.memo !== item.title && <p className="study-memo-big">{item.memo}</p>}
 
           {imageUrlList.length > 0 && (
             <div className="view-images">

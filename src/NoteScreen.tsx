@@ -41,7 +41,8 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
     setSaving(true);
     try {
       const id = await saveNote({
-        title,
+        // 学びノート：ひとことメモがそのまま記事のタイトル（空なら本文の1行目）
+        title: isStudy ? memo.trim().slice(0, 100) : title,
         text,
         url,
         memo,
@@ -57,10 +58,96 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
     }
   }
 
+  const saveLabel = saving ? '保存しています…' : '保存する';
+
+  // 学びを書く：テーマ → ひとことメモ（タイトル） → 本文 → リンク → 覚えた？ の順。保存ボタンは上と下に（下に固定しない）
+  if (isStudy) {
+    return (
+      <section className="study-note">
+        <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
+        <div className="note-head">
+          <h1 className="screen-title">✎ 学びを書く</h1>
+          <button className="btn-small is-primary note-head-save" onClick={save} disabled={saving || !dirty}>
+            {saveLabel}
+          </button>
+        </div>
+        {shelf && (
+          <p className="hint">
+            保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並びます）。
+          </p>
+        )}
+
+        {error && <p className="error" role="alert">{error}</p>}
+
+        <div className="card">
+          <h2 className="card-title">テーマ <span className="optional">任意</span></h2>
+          <StudyThemePicker
+            themes={themes}
+            value={themeId}
+            onChange={setThemeId}
+            onAdded={(t) => setThemes((list) => [...list, t])}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="card note-card">
+          <label className="field study-memo-field">
+            <span className="field-label">
+              ひとことメモ（タイトル） <span className="optional">任意</span>
+            </span>
+            <input
+              className="title-input"
+              value={memo}
+              maxLength={100}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="例：まず相手の話を聞く。AIは後から"
+            />
+            <span className="hint">記事のいちばん上に大きく出ます。空なら本文の1行目がタイトルになります。</span>
+          </label>
+          <label className="field">
+            <span className="field-label">本文</span>
+            <textarea
+              className="note-input study-note-input"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="学んだこと、講座や本の内容、やってみたこと…"
+              maxLength={20000}
+            />
+          </label>
+          <p className="hint">
+            話して書きたいときは、iPhone のキーボードの🎤（マイク）ボタンを押すと、声で入力できます。
+          </p>
+          <label className="field">
+            <span className="field-label">リンク <span className="optional">任意</span></span>
+            <input
+              className="title-input"
+              type="url"
+              inputMode="url"
+              autoCapitalize="none"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </label>
+        </div>
+
+        <div className="card">
+          <h2 className="card-title">覚えた？ <span className="optional">任意</span></h2>
+          <StudyStatusPicker value={status} onChange={setStatus} disabled={saving} />
+          <p className="hint">選ばなければ「まだ」になります。</p>
+        </div>
+
+        <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !dirty}>
+          {saveLabel}
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section>
       <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
-      <h1 className="screen-title">{isStudy ? '✎ 学びを書く' : isIdea ? '💡 アイデアを書く' : 'ノートを書く'}</h1>
+      <h1 className="screen-title">{isIdea ? '💡 アイデアを書く' : 'ノートを書く'}</h1>
       {shelf && (
         <p className="hint">
           保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並びます）。
@@ -74,35 +161,17 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
           className="note-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={isStudy ? '学んだこと、講座や本の内容、やってみたこと…' : isIdea ? '思いついたこと、やってみたいこと、くわしいメモ…' : '思ったこと、気づいたこと、今日のひとこと…'}
+          placeholder={isIdea ? '思いついたこと、やってみたいこと、くわしいメモ…' : '思ったこと、気づいたこと、今日のひとこと…'}
           autoFocus
           maxLength={20000}
         />
         <p className="hint">
           話して書きたいときは、iPhone のキーボードの🎤（マイク）ボタンを押すと、声で入力できます。
         </p>
-        {isStudy && (
-          <label className="field">
-            <span className="field-label">
-              ひとことメモ（学んだことを1行で） <span className="optional">任意</span>
-            </span>
-            <input
-              className="title-input"
-              value={memo}
-              maxLength={200}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="例：CLAUDE.md にルールを書けば、毎回説明しなくていい"
-            />
-          </label>
-        )}
-        {isStudy ? (
-          <p className="hint">本文の1行目が、そのまま記事のタイトルになります（例：1行目に「Claude Code 講座 第3回」）。</p>
-        ) : (
-          <label className="field">
-            <span className="field-label">タイトル <span className="optional">任意</span></span>
-            <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="空なら1行目から付けます" />
-          </label>
-        )}
+        <label className="field">
+          <span className="field-label">タイトル <span className="optional">任意</span></span>
+          <input className="title-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="空なら1行目から付けます" />
+        </label>
         <label className="field">
           <span className="field-label">リンク <span className="optional">任意</span></span>
           <input
@@ -117,22 +186,6 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         </label>
       </div>
 
-      {isStudy && (
-        <div className="card">
-          <h2 className="card-title">テーマ <span className="optional">任意</span></h2>
-          <StudyThemePicker
-            themes={themes}
-            value={themeId}
-            onChange={setThemeId}
-            onAdded={(t) => setThemes((list) => [...list, t])}
-            disabled={saving}
-          />
-          <h2 className="card-title edit-gap">覚えた？ <span className="optional">任意</span></h2>
-          <StudyStatusPicker value={status} onChange={setStatus} disabled={saving} />
-          <p className="hint">選ばなければ「まだ」になります。</p>
-        </div>
-      )}
-
       {isIdea && (
         <div className="card">
           <h2 className="card-title">育ち具合 <span className="optional">任意</span></h2>
@@ -143,7 +196,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
 
       <div className="bottom-action">
         <button className="btn-primary btn-large" onClick={save} disabled={saving || !dirty}>
-          {saving ? '保存しています…' : '保存する'}
+            {saveLabel}
         </button>
       </div>
     </section>

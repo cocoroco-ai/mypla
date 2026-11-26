@@ -588,7 +588,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
                 </span>
                 <span className="item-meta study-meta">
                   <span className="study-meta-text">
-                    {[item.studyThemeId && studyThemeMap[item.studyThemeId]?.name, item.memo ? item.title : formatDate(item.createdAt)]
+                    {[item.studyThemeId && studyThemeMap[item.studyThemeId]?.name, item.memo && item.memo !== item.title ? item.title : formatDate(item.createdAt)]
                       .filter(Boolean)
                       .join('・')}
                   </span>
