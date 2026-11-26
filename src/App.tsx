@@ -606,6 +606,8 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </div>
       )}
 
+      {/* ここから下は本筋ではない「欄外」：見た目の設定・バックアップ・説明 */}
+      <footer className="home-footer">
       <button className="home-theme" onClick={onTheme}>
         <span className="home-theme-icon">
           <LineIcon name="palette" size={22} />
@@ -650,6 +652,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         </dl>
         <p className="hint">どれも同じ日なら、何回ホームを開いても同じ記事が出ます。押すと、その記事や画面が開きます。</p>
       </details>
+      </footer>
 
       <div className="bottom-action home-actions">
         <button className="btn-primary btn-large" onClick={onImport}>

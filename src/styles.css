@@ -1369,3 +1369,6 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 @media (max-width: 360px) {
   [data-style="elegant"] .app.is-home .brand-swash { width: 66px; }
 }
+/* ホームの欄外（mypla.を彩る・書き出し・説明）：本筋から離して、細い線で区切る */
+.home-footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); }
+.home-footer .home-theme { margin-top: 0; }
