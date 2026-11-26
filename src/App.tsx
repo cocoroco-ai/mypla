@@ -234,12 +234,13 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${screen.name === 'home' && session ? 'is-home' : ''}`}>
       {/* Elegant のときだけ見える、背景の抽象的な曲線（押せない・読み上げない） */}
-      <svg className="deco-curves" viewBox="0 0 400 900" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
-        <path d="M-40 120C80 40 210 60 300 130S470 230 460 120" />
-        <path d="M-60 170C70 90 220 110 320 175S480 270 470 170" />
-        <path d="M-30 760C90 690 230 700 330 770S470 860 450 780" />
+      <svg className="deco-curves" viewBox="0 0 400 860" preserveAspectRatio="none" aria-hidden="true">
+        <path className="deco-line" d="M150 300C230 285 300 250 340 190S392 120 420 110" />
+        <path className="deco-line" d="M170 318C250 300 315 268 352 210S398 150 420 140" />
+        <path className="deco-fill" d="M0 800C90 770 170 790 250 812S370 830 400 800V860H0Z" />
+        <path className="deco-fill is-2" d="M0 830C110 806 200 820 280 836S380 846 400 828V860H0Z" />
       </svg>
       <header className="topbar">
         <button className="brand" onClick={home} aria-label="ホームへ">
@@ -247,8 +248,9 @@ export default function App() {
             mypla<span className="dot">.</span>
           </span>
           {/* Elegant のときだけ見える、ロゴの下の細い曲線 */}
-          <svg className="brand-swash" viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M2 7.5C26 1.5 52 1.8 70 5.2S104 9.2 118 2.5" />
+          <svg className="brand-swash" viewBox="0 0 160 40" aria-hidden="true">
+            <path d="M2 34C30 30 64 26 96 18S142 6 158 2" />
+            <path d="M12 36C46 33 80 28 110 22S146 12 156 8" />
           </svg>
         </button>
         {session && (
@@ -396,8 +398,15 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
           <span className="brand-sub-plus" aria-hidden="true">＋</span>
           <span>My Plus</span>
         </p>
-        {/* 利用者が付けた名前（未設定なら出さない） */}
-        {myName && <h1 className="home-name is-custom">{myName}</h1>}
+        {/* 利用者が付けた名前（未設定なら出さない）。鉛筆を押すと名前・色・スタイルの画面へ */}
+        {myName && (
+          <div className="home-name-row">
+            <h1 className="home-name is-custom">{myName}</h1>
+            <button className="home-name-edit" onClick={onTheme} aria-label="名前を変える">
+              <LineIcon name="pencil" size={20} />
+            </button>
+          </div>
+        )}
         <p className="tagline">集める知識、広がる私。</p>
       </div>
 
@@ -416,6 +425,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
             )}
           </span>
         </button>
+        <p className="lib-sub">保存した知識、広がる私。</p>
         <button className="lib-search" onClick={onLibrary}>
           <span className="lib-search-icon"><LineIcon name="search" size={18} /></span>
           <span className="lib-search-text">すべての情報を検索・閲覧</span>
