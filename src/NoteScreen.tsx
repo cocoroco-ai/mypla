@@ -3,6 +3,7 @@ import { listStudyThemes, saveNote, type IdeaStatus, type Shelf, type StudyStatu
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
 import { IdeaStatusPicker } from './IdeaSeed';
 import { ShelfLabel } from './icons';
+import { getStudyTheme } from './studyMemory';
 
 type Props = {
   onBack: () => void;
@@ -15,13 +16,20 @@ type Props = {
 export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   const isStudy = shelf?.style === 'study';
   const [themes, setThemes] = useState<StudyTheme[]>([]);
-  const [themeId, setThemeId] = useState<string | null>(null);
+  // 学びノートで選んでいたテーマを、最初から選んでおく
+  const [themeId, setThemeId] = useState<string | null>(() => (shelf?.style === 'study' ? getStudyTheme(shelf.id) : null));
   const [status, setStatus] = useState<StudyStatus>('yet');
   const [memo, setMemo] = useState('');
   const isIdea = shelf?.style === 'idea';
   const [ideaStatus, setIdeaStatus] = useState<IdeaStatus>('seed');
   useEffect(() => {
-    if (isStudy) listStudyThemes().then(setThemes).catch(() => setThemes([]));
+    if (isStudy)
+      listStudyThemes()
+        .then((list) => {
+          setThemes(list);
+          setThemeId((cur) => (cur && !list.some((t) => t.id === cur) ? null : cur));
+        })
+        .catch(() => setThemes([]));
   }, [isStudy]);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -41,7 +49,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
     setSaving(true);
     try {
       const id = await saveNote({
-        // 学びノート：ひとことメモがそのまま記事のタイトル（空なら本文の1行目）
+        // 学びノート：ひとこと（必須）がそのまま記事のタイトル
         title: isStudy ? memo.trim().slice(0, 100) : title,
         text,
         url,
@@ -59,6 +67,8 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   }
 
   const saveLabel = saving ? '保存しています…' : '保存する';
+  // 学びノートは「ひとこと（タイトル）」が必須
+  const canSave = isStudy ? Boolean(memo.trim()) : dirty;
 
   // 学びを書く：テーマ → ひとことメモ（タイトル） → 本文 → リンク → 覚えた？ の順。保存ボタンは上と下に（下に固定しない）
   if (isStudy) {
@@ -67,7 +77,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
         <div className="note-head">
           <h1 className="screen-title">✎ 学びを書く</h1>
-          <button className="btn-small is-primary note-head-save" onClick={save} disabled={saving || !dirty}>
+          <button className="btn-small is-primary note-head-save" onClick={save} disabled={saving || !canSave}>
             {saveLabel}
           </button>
         </div>
@@ -93,7 +103,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         <div className="card note-card">
           <label className="field study-memo-field">
             <span className="field-label">
-              ひとことメモ（タイトル） <span className="optional">任意</span>
+              ひとこと（タイトル） <span className="required">必須</span>
             </span>
             <input
               className="title-input"
@@ -102,10 +112,10 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
               onChange={(e) => setMemo(e.target.value)}
               placeholder="例：まず相手の話を聞く。AIは後から"
             />
-            <span className="hint">記事のいちばん上に大きく出ます。空なら本文の1行目がタイトルになります。</span>
+            <span className="hint">記事のいちばん上に大きく出ます。あとで見分けがつくように、ひとことで。</span>
           </label>
           <label className="field">
-            <span className="field-label">本文</span>
+            <span className="field-label">本文 <span className="optional">任意</span></span>
             <textarea
               className="note-input study-note-input"
               value={text}
@@ -137,7 +147,8 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
           <p className="hint">選ばなければ「まだ」になります。</p>
         </div>
 
-        <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !dirty}>
+        {!memo.trim() && <p className="hint center">「ひとこと（タイトル）」を書くと保存できます。本文はあとから書き足せます。</p>}
+        <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !canSave}>
           {saveLabel}
         </button>
       </section>

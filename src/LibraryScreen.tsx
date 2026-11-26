@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ImageViewer from './ImageViewer';
 import { AiCardGrid } from './AiZukan';
 import { StudyBadge, StudyThemeGrid } from './StudyNote';
+import { getStudyTheme, setStudyThemeMemory } from './studyMemory';
 import { IdeaBadge, IdeaQuickWrite } from './IdeaSeed';
 import { LineIcon, ShelfEmpty, ShelfLabel } from './icons';
 import { countNoShelf, countTrash, countUnsorted, formatDate, imageUrls, listItems, mergeItems, mergedTitle, savePhotos, searchWords, listShelves, listAiCards, countByAiCard, listStudyThemes, countStudy, countIdeas, IDEA_STATUSES, IDEA_STATUS_EMOJI, IDEA_STATUS_LABEL, STUDY_STATUS_LABEL, type AiCard, type IdeaStatus, type ItemSummary, type Shelf, type StudyCounts, type StudyStatus, type StudyTheme } from './library';
@@ -47,7 +48,11 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
   const isStudy = shelf?.style === 'study';
   const [studyThemes, setStudyThemes] = useState<StudyTheme[] | null>(null);
   const [studyCounts, setStudyCounts] = useState<StudyCounts | null>(null);
-  const [studyTheme, setStudyTheme] = useState<string | null>(null);
+  const [studyTheme, setStudyThemeState] = useState<string | null>(() => getStudyTheme(shelf?.id));
+  function setStudyTheme(id: string | null) {
+    setStudyThemeState(id);
+    setStudyThemeMemory(shelf?.id, id);
+  }
   const [studyStatus, setStudyStatus] = useState<StudyStatus | null>(null);
   // 「探す」の枠を開いているか（この端末に覚えておく。初めは畳んだ状態）
   const [findOpen, setFindOpen] = useState(() => {
@@ -73,6 +78,14 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       .then(([list, counts]) => {
         setStudyThemes(list);
         setStudyCounts(counts);
+        // 覚えていたテーマが消されていたら、選択を外す
+        setStudyThemeState((cur) => {
+          if (cur && !list.some((t) => t.id === cur)) {
+            setStudyThemeMemory(shelf?.id, null);
+            return null;
+          }
+          return cur;
+        });
       })
       .catch(() => setStudyThemes([]));
   }

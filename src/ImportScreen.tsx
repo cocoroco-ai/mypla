@@ -3,7 +3,7 @@ import { cropToRegions, joinRegionList } from './crop';
 import { recognize, type OcrProgress, type OcrResult, type Region, type RemovedLine } from './ocr';
 import RegionSelector from './RegionSelector';
 import ImageViewer from './ImageViewer';
-import { listShelves, saveImagesOnly, saveItem, type Shelf } from './library';
+import { listShelves, listStudyThemes, saveImagesOnly, saveItem, updateItem, type Shelf, type StudyTheme } from './library';
 
 type Result = OcrResult;
 
@@ -56,6 +56,7 @@ export default function ImportScreen({
   const [usedRegions, setUsedRegions] = useState<Region[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null); // 学びノートに保存したとき、あとからテーマを付けるため
   // 囲んだ部分だけの画像で保存する（初めはオフ＝元の画像を全部残す）
   const [cropOnly, setCropOnly] = useState(false);
   const [cropPreview, setCropPreview] = useState<string | null>(null);
@@ -97,6 +98,7 @@ export default function ImportScreen({
     setRegions([]);
     setUsedRegions(null);
     setSaved(false);
+    setSavedId(null);
     setError(null);
   }
 
@@ -117,6 +119,7 @@ export default function ImportScreen({
     setRegions([]);
     setUsedRegions(null);
     setSaved(false);
+    setSavedId(null);
     setError(null);
   }
 
@@ -166,7 +169,7 @@ export default function ImportScreen({
       // 「囲んだ部分だけ」なら、1枚目を切り抜いた画像に差し替える（範囲はもう画像そのものなので記録しない）
       const useCrop = cropOnly && usedRegions && usedRegions.length > 0;
       const files = useCrop ? [await cropToRegions(file, usedRegions), ...allFiles.slice(1)] : allFiles;
-      await saveItem({
+      const newId = await saveItem({
         title,
         ocrText,
         text,
@@ -175,6 +178,7 @@ export default function ImportScreen({
         regions: useCrop ? null : usedRegions,
         shelfId,
       });
+      setSavedId(newId);
       setSaved(true);
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -194,7 +198,8 @@ export default function ImportScreen({
     const p = (n: number) => String(n).padStart(2, '0');
     const autoTitle = `画像のみ（${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}）`;
     try {
-      await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, files: allFiles, regions: null, shelfId });
+      const newId = await saveItem({ title: autoTitle, ocrText: '', text: '', confidence: null, files: allFiles, regions: null, shelfId });
+      setSavedId(newId);
       setTitle(autoTitle);
       setSaved(true);
       window.scrollTo({ top: 0 });
@@ -323,6 +328,7 @@ export default function ImportScreen({
     );
   }
 
+  const savedShelf = shelves.find((x) => x.id === shelfId) ?? null;
   if (saved) {
     return (
       <section>
@@ -336,6 +342,7 @@ export default function ImportScreen({
               : `画像を保存しました${shelfName ? `（「${shelfName}」に分類）` : ''}。あとでライブラリーから開いて「画像の文字を読み取る」を押すと、文字にして検索できるようになります。`}
           </p>
         </div>
+        {savedId && savedShelf?.style === 'study' && <SavedThemeTagger itemId={savedId} />}
         <div className="bottom-action">
           <button className="btn-primary btn-large" onClick={reset}>＋ 続けて取り込む</button>
           <button className="btn-text" onClick={onBack}>{backLabel}に戻る</button>
@@ -689,4 +696,56 @@ export function suggestTitle(text: string): string {
   if (!line) return '';
   const chars = [...line];
   return chars.length > 30 ? `${chars.slice(0, 30).join('')}…` : line;
+}
+
+/** 学びノートにスクショを保存したあと：押すだけでテーマを付ける（任意。もう一度押すと外す） */
+function SavedThemeTagger({ itemId }: { itemId: string }) {
+  const [themes, setThemes] = useState<StudyTheme[] | null>(null);
+  const [current, setCurrent] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    listStudyThemes().then(setThemes).catch(() => setThemes([]));
+  }, []);
+
+  async function pick(t: StudyTheme) {
+    const next = current === t.id ? null : t.id;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await updateItem(itemId, { studyThemeId: next });
+      setCurrent(next);
+      setNotice(next ? `「${t.name}」を付けました。` : 'テーマを外しました。');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'テーマを付けられませんでした。');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (themes === null || themes.length === 0) return null;
+  return (
+    <div className="card saved-theme">
+      <h2 className="card-title">テーマを付ける <span className="optional">任意</span></h2>
+      <div className="chip-list" role="group" aria-label="テーマ">
+        {themes.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`chip ${current === t.id ? 'is-on' : ''}`}
+            aria-pressed={current === t.id}
+            onClick={() => pick(t)}
+            disabled={busy}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {notice && <p className="notice" role="status">{notice}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
+    </div>
+  );
 }
