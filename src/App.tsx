@@ -381,6 +381,17 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
         {/* 名前を付けたときだけ大きく出す（未設定なら、今までどおり上の「mypla.」と下のひとことだけ） */}
         {myName && <h1 className="home-name is-custom">{myName}</h1>}
         <p className="tagline">集める知識、広がる私。</p>
+        {/* 名前の由来：my platform（わたしの居場所）と、音で my plus（わたしにプラス） */}
+        <dl className="brand-meaning" aria-label="mypla. の名前の由来">
+          <div className="bm-row">
+            <dt className="bm-word"><b>my pla</b>tform</dt>
+            <dd className="bm-ja">わたしの居場所</dd>
+          </div>
+          <div className="bm-row">
+            <dt className="bm-word"><b>my pl</b>us</dt>
+            <dd className="bm-ja">わたしにプラス</dd>
+          </div>
+        </dl>
       </div>
 
       {/* ライブラリー（ホームを開いたらすぐ見えるよう一番上に）：すべての保存情報。カテゴリーはその中で、テーマ別に見るための入り口 */}

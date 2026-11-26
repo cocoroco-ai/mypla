@@ -1179,3 +1179,16 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .notice-help summary { list-style: none; justify-content: space-between; }
 .notice-help summary::after { content: "開く ▼"; font-size: 13px; }
 .notice-help[open] summary::after { content: "畳む ▲"; }
+
+/* ホーム：名前の由来（my platform／my plus） */
+.brand-meaning {
+  display: inline-grid; gap: 2px; margin: 10px 0 0; padding: 6px 0 6px 12px;
+  border-left: 2px solid var(--mint-strong);
+}
+.bm-row { display: grid; grid-template-columns: 7.6em auto; align-items: baseline; gap: 10px; }
+.bm-word {
+  margin: 0; font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
+  font-size: 15px; letter-spacing: 0.06em; color: var(--text-sub);
+}
+.bm-word b { font-weight: 700; color: var(--deep); }
+.bm-ja { margin: 0; font-size: 12px; letter-spacing: 0.08em; color: var(--text-sub); }
