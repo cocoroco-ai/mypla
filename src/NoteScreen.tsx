@@ -21,6 +21,8 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   const [status, setStatus] = useState<StudyStatus>('yet');
   const [memo, setMemo] = useState('');
   const isIdea = shelf?.style === 'idea';
+  const isWords = shelf?.style === 'cards';
+  const [source, setSource] = useState(''); // 誰の言葉（ことばの宝箱）
   const [ideaStatus, setIdeaStatus] = useState<IdeaStatus>('seed');
   useEffect(() => {
     if (isStudy)
@@ -37,7 +39,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const dirty = Boolean(title.trim() || text.trim() || url.trim() || memo.trim());
+  const dirty = Boolean(title.trim() || text.trim() || url.trim() || memo.trim() || source.trim());
 
   function back() {
     if (dirty && !window.confirm('書いた内容を保存せずに戻りますか？')) return;
@@ -55,6 +57,7 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         url,
         memo,
         shelfId: shelf?.id ?? null,
+        source: isWords ? source : '',
         studyThemeId: isStudy ? themeId : null,
         studyStatus: status,
         ideaStatus,
@@ -149,6 +152,57 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
 
         {!memo.trim() && <p className="hint center">「ひとこと（タイトル）」を書くと保存できます。本文はあとから書き足せます。</p>}
         <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !canSave}>
+          {saveLabel}
+        </button>
+      </section>
+    );
+  }
+
+  // ことばを書く（ことばの宝箱）：ことば（必須）と誰の言葉（任意）だけ
+  if (isWords) {
+    const canSaveWord = Boolean(text.trim());
+    return (
+      <section>
+        <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
+        <div className="note-head">
+          <h1 className="screen-title">✎ ことばを書く</h1>
+          <button className="btn-small is-primary note-head-save" onClick={save} disabled={saving || !canSaveWord}>
+            {saveLabel}
+          </button>
+        </div>
+        {shelf && (
+          <p className="hint">
+            保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並び、ホームの「今日のことば」にも出ます）。
+          </p>
+        )}
+
+        {error && <p className="error" role="alert">{error}</p>}
+
+        <div className="card note-card">
+          <label className="field">
+            <span className="field-label">ことば <span className="required">必須</span></span>
+            <textarea
+              className="note-input study-note-input"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="心に残った言葉、好きな一文…"
+              maxLength={20000}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">誰の言葉 <span className="optional">任意</span></span>
+            <input
+              className="title-input"
+              value={source}
+              maxLength={200}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="例：本の題名、話した人、出典"
+            />
+          </label>
+        </div>
+
+        {!canSaveWord && <p className="hint center">「ことば」を書くと保存できます。</p>}
+        <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !canSaveWord}>
           {saveLabel}
         </button>
       </section>

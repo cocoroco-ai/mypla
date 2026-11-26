@@ -893,6 +893,8 @@ export async function saveNote(input: {
   text: string;
   url: string;
   memo?: string;
+  /** 誰の言葉（ことばの宝箱から書いたとき。任意） */
+  source?: string;
   /** 学びノートの棚などから書いたとき：最初からその棚に置く */
   shelfId?: string | null;
   studyThemeId?: string | null;
@@ -909,6 +911,7 @@ export async function saveNote(input: {
       source_type: 'note',
       url: normalizeUrl(input.url),
       memo: (input.memo ?? '').trim(),
+      source: (input.source ?? '').trim(),
       shelf_id: input.shelfId ?? null,
       study_theme_id: input.studyThemeId ?? null,
       study_status: input.studyStatus ?? 'yet',

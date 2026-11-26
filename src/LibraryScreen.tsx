@@ -17,7 +17,7 @@ type Props = {
   shelf?: Shelf; // 棚を開いたとき（その棚の記事だけを並べる）
   initialFilter?: LibraryFilter;
   onOpenAiCard?: (card: AiCard) => void; // AI図鑑の棚で、カードを開く
-  onWrite?: () => void; // 学びノート・アイデアの種の棚で、直接書く
+  onWrite?: () => void; // 学びノート・アイデアの種・ことばの宝箱で、直接書く
 };
 
 /** ライブラリーの絞り込み：すべて／★お気に入り／未分類（カテゴリーなし）／文字読み取り待ち（OCRまだ） */
@@ -342,7 +342,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
           </span>
         )}
       </h1>
-      {shelfInfo && !isPhotos && !isStudy && !isIdea && !isEmpty && (
+      {shelfInfo && !isPhotos && !isStudy && !isIdea && !isWords && !isEmpty && (
         <p className="hint">
           下の「＋ スクショを取り込む」で、このカテゴリーに直接保存できます。ライブラリーの記事を開いて「分類する」からも集められます（ライブラリーにも並びます）。
         </p>
@@ -358,6 +358,15 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
         <AiCardGrid cards={aiCards} counts={aiCounts} onOpen={(c) => onOpenAiCard?.(c)} onChanged={loadAiCards} />
       )}
       {isAi && <h2 className="ai-zukan-title">このカテゴリーの記事</h2>}
+
+      {/* ことばの宝箱：その場で言葉を書いて入れる */}
+      {isWords && !merging && (
+        <div className="study-panel is-write">
+          <h2 className="section-head">書く</h2>
+          <button className="btn-primary study-write" onClick={onWrite}>✎ ことばを書く</button>
+          <p className="hint">スクショは、下の「＋ スクショを取り込む」から入れられます（ほかのカテゴリーと同じです）。</p>
+        </div>
+      )}
 
       {isStudy && !merging && (
         <>
