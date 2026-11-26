@@ -344,7 +344,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
       </h1>
       {shelfInfo && !isPhotos && !isStudy && !isIdea && !isEmpty && (
         <p className="hint">
-          下の「＋ スクショを取り込む」で、このカテゴリーに直接保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます（ライブラリーにも並びます）。
+          下の「＋ スクショを取り込む」で、このカテゴリーに直接保存できます。ライブラリーの記事を開いて「分類する」からも集められます（ライブラリーにも並びます）。
         </p>
       )}
       {isPhotos && !isEmpty && (
@@ -503,7 +503,7 @@ export default function LibraryScreen({ onBack, onOpen, onImport, onTrash, shelf
               : isStudy
                 ? '上の「✎ 学びを書く」で書くか、下の「＋ スクショを取り込む」で、ここに保存できます。'
                 : shelfInfo
-                  ? '下の「＋ スクショを取り込む」で、ここに保存できます。ライブラリーの記事を開いて「📂 分類する」からも集められます。'
+                  ? '下の「＋ スクショを取り込む」で、ここに保存できます。ライブラリーの記事を開いて「分類する」からも集められます。'
                   : '下の「＋ スクショを取り込む」で、ここに集まります。'}
           </p>
         </ShelfEmpty>

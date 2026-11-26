@@ -158,7 +158,12 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
   return (
     <section>
       <button className="link-back" onClick={back} disabled={saving}>← {shelf ? shelf.name : 'ホーム'}</button>
-      <h1 className="screen-title">{isIdea ? '💡 アイデアを書く' : 'ノートを書く'}</h1>
+      <div className="note-head">
+        <h1 className="screen-title">{isIdea ? '💡 アイデアを書く' : 'ノートを書く'}</h1>
+        <button className="btn-small is-primary note-head-save" onClick={save} disabled={saving || !dirty}>
+          {saveLabel}
+        </button>
+      </div>
       {shelf && (
         <p className="hint">
           保存すると「<ShelfLabel shelf={shelf} size={14} />」に入ります（ライブラリーにも並びます）。
@@ -205,11 +210,10 @@ export default function NoteScreen({ onBack, onSaved, shelf }: Props) {
         </div>
       )}
 
-      <div className="bottom-action">
-        <button className="btn-primary btn-large" onClick={save} disabled={saving || !dirty}>
-            {saveLabel}
-        </button>
-      </div>
+      {/* 保存ボタンは見出しの横と、いちばん下（画面の下に固定しない） */}
+      <button className="btn-primary btn-large note-end-save" onClick={save} disabled={saving || !dirty}>
+        {saveLabel}
+      </button>
     </section>
   );
 }

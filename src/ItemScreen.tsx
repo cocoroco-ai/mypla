@@ -628,7 +628,12 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
                 <span className="shelf-label-icon"><ShelfIcon emoji={currentShelf.icon} size={18} /></span>
                 <span>分類を変更{isAiShelf ? '・どのAIの話か選ぶ' : ''}</span>
               </span>
-            ) : '📂 分類する'}
+            ) : (
+              <span className="shelf-label">
+                <span className="shelf-label-icon"><LineIcon name="folder" size={18} /></span>
+                <span>分類する</span>
+              </span>
+            )}
           </button>
 
           {viewIndex !== null && imageUrlList[viewIndex] && (
