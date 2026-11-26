@@ -21,6 +21,9 @@
         var t = 'lavender';
         try { var s = localStorage.getItem('mypla-theme'); if (ids.indexOf(s) >= 0) t = s; } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);
+        var st = 'simple';
+        try { var ss = localStorage.getItem('mypla-style'); if (ss === 'simple' || ss === 'elegant') st = ss; } catch (e) {}
+        document.documentElement.setAttribute('data-style', st);
       })();
     </script>
   </head>

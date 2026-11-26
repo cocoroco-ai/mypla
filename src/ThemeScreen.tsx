@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { PLACE_NAME_MAX, THEMES, applyTheme, currentTheme, placeName, savePlaceName, type ThemeId } from './themes';
+import { PLACE_NAME_MAX, STYLES, THEMES, applyStyle, applyTheme, currentStyle, currentTheme, placeName, savePlaceName, type StyleId, type ThemeId } from './themes';
 import { LineIcon } from './icons';
 
 /** mypla.を彩る：自分の場所の名前と、カラーテーマを選ぶ画面。どちらもこの端末に残る（保存した記事には影響しない） */
 export default function ThemeScreen({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<ThemeId>(currentTheme());
+  const [style, setStyle] = useState<StyleId>(currentStyle());
   const [name, setName] = useState(placeName());
   const [savedName, setSavedName] = useState(placeName());
   const [nameNotice, setNameNotice] = useState('');
@@ -12,6 +13,11 @@ export default function ThemeScreen({ onBack }: { onBack: () => void }) {
   function choose(id: ThemeId) {
     applyTheme(id);
     setSelected(id);
+  }
+
+  function chooseStyle(id: StyleId) {
+    applyStyle(id);
+    setStyle(id);
   }
 
   function saveName() {
@@ -123,6 +129,50 @@ export default function ThemeScreen({ onBack }: { onBack: () => void }) {
 
       {now && <p className="theme-note">{now.note}</p>}
 
+      <hr className="theme-rule" />
+
+      {/* My Style, My Choice. */}
+      <div className="theme-lead">
+        <h2 className="theme-title">My Style, My Choice.</h2>
+        <p className="theme-sub">私の場所だから、スタイルも私らしく。</p>
+      </div>
+      <ul className="style-list" role="radiogroup" aria-label="デザインスタイル">
+        {STYLES.map((st) => {
+          const on = st.id === style;
+          return (
+            <li key={st.id}>
+              <button className={`style-option ${on ? 'is-on' : ''}`} role="radio" aria-checked={on} onClick={() => chooseStyle(st.id)}>
+                {/* 小さなプレビュー（今の色で、そのスタイルの見た目） */}
+                <span className={`style-mini is-${st.id}`} aria-hidden="true">
+                  <span className="sm-logo">
+                    <span>
+                      mypla<span className="dot">.</span>
+                    </span>
+                    <svg className="sm-swash" viewBox="0 0 120 10" preserveAspectRatio="none">
+                      <path d="M2 7.5C26 1.5 52 1.8 70 5.2S104 9.2 118 2.5" />
+                    </svg>
+                  </span>
+                  <span className="sm-sub">My Platform ＋ My Plus</span>
+                  <span className="sm-lib">
+                    <span className="sm-lib-head">ライブラリー</span>
+                    <span className="sm-cats">
+                      <i />
+                      <i className="is-gold" />
+                    </span>
+                  </span>
+                </span>
+                <span className="style-name">
+                  {on && <span className="style-check">✓ </span>}
+                  {st.name}
+                  <span className="style-kana">{st.kana}</span>
+                </span>
+                <span className="style-note">{st.note}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
       {/* プレビュー：名前と色の組み合わせ */}
       <div className="theme-preview" aria-label="プレビュー">
         <p className="theme-preview-label">プレビュー</p>
@@ -148,7 +198,7 @@ export default function ThemeScreen({ onBack }: { onBack: () => void }) {
 
       <p className="theme-message">今日の気分に、今日の色。</p>
       <p className="hint center">
-        色を押すと、その場で切り替わります。名前も色も何度でも変えられます（保存した記事には影響しません。この端末に残ります）。
+        色やスタイルを押すと、その場で切り替わります。名前も色もスタイルも何度でも変えられます（保存した記事には影響しません。この端末に残ります）。
       </p>
     </section>
   );

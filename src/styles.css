@@ -1180,15 +1180,166 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .notice-help summary::after { content: "開く ▼"; font-size: 13px; }
 .notice-help[open] summary::after { content: "畳む ▲"; }
 
-/* ホーム：名前の由来（my platform／my plus） */
-.brand-meaning {
-  display: inline-grid; gap: 2px; margin: 10px 0 0; padding: 6px 0 6px 12px;
-  border-left: 2px solid var(--mint-strong);
+/* =====================================================================
+   ホーム上部：ロゴの下のブランド表記・名前・ひとこと（コンパクトに）
+   ===================================================================== */
+.brand { position: relative; display: inline-grid; line-height: 1.2; }
+.brand-word { display: inline-block; }
+.brand-swash { display: none; }
+.home-hero { margin: -6px 0 12px; }
+.brand-sub {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; margin: 0;
+  font-size: 12px; line-height: 1.5; letter-spacing: 0.12em; color: var(--text-sub);
 }
-.bm-row { display: grid; grid-template-columns: 7.6em auto; align-items: baseline; gap: 10px; }
-.bm-word {
-  margin: 0; font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
-  font-size: 15px; letter-spacing: 0.06em; color: var(--text-sub);
+.brand-sub-plus { color: var(--main); font-weight: 700; letter-spacing: 0; }
+.home-hero .home-name.is-custom { margin: 4px 0 0; font-size: 22px; line-height: 1.3; }
+.home-hero .tagline { margin: 2px 0 0; font-size: 14px; line-height: 1.5; }
+
+/* 背景の曲線（Elegant だけ表示） */
+.deco-curves { display: none; }
+
+/* =====================================================================
+   デザインスタイル：Simple（初期）／ Elegant。色（data-theme）とは別に切り替える
+   ===================================================================== */
+
+/* ---------- Simple：すっきり・フラット・角丸控えめ・影なし ---------- */
+[data-style="simple"] {
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-btn: none;
 }
-.bm-word b { font-weight: 700; color: var(--deep); }
-.bm-ja { margin: 0; font-size: 12px; letter-spacing: 0.08em; color: var(--text-sub); }
+[data-style="simple"] .brand {
+  font-family: "Helvetica Neue", Arial, -apple-system, 'Hiragino Sans', sans-serif;
+  font-weight: 700; letter-spacing: 0;
+}
+[data-style="simple"] .brand-sub { text-transform: none; font-weight: 600; }
+[data-style="simple"] .card,
+[data-style="simple"] .study-panel,
+[data-style="simple"] .notice-help { border-radius: 8px; }
+[data-style="simple"] .btn-primary,
+[data-style="simple"] .btn-secondary,
+[data-style="simple"] .btn-text,
+[data-style="simple"] .btn-small { border-radius: 8px; }
+[data-style="simple"] .lib-panel { border-radius: 12px; background: var(--main); box-shadow: none; }
+[data-style="simple"] .lib-cat { border-radius: 8px; box-shadow: none; border-color: transparent; }
+[data-style="simple"] .lib-search,
+[data-style="simple"] .lib-add { border-radius: 8px; }
+[data-style="simple"] .lib-search { background: #fff; }
+
+/* ---------- Elegant：セリフ体・淡いグラデーション・曲線・大きめの角丸・柔らかい影 ---------- */
+[data-style="elegant"] body {
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--mint) 0%, transparent 60%),
+    radial-gradient(90% 50% at 0% 100%, var(--blue-soft) 0%, transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+[data-style="elegant"] .deco-curves {
+  display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none;
+  fill: none; stroke: var(--mint-strong); stroke-width: 1.1; opacity: 0.45;
+}
+[data-style="elegant"] .topbar {
+  background: color-mix(in srgb, var(--topbar) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-bottom-color: color-mix(in srgb, var(--line) 70%, transparent);
+}
+[data-style="elegant"] .brand {
+  font-family: "Didot", "Bodoni 72", Georgia, "Times New Roman", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-weight: 500; font-size: 25px; letter-spacing: 0.03em;
+}
+[data-style="elegant"] .brand-swash {
+  display: block; width: 100%; height: 7px; margin-top: -3px;
+  fill: none; stroke: var(--main); stroke-width: 1.2; stroke-linecap: round; opacity: 0.75;
+}
+[data-style="elegant"] .brand-sub {
+  font-family: "Didot", "Bodoni 72", Georgia, "Times New Roman", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-style: italic; font-size: 13px; letter-spacing: 0.08em; color: var(--deep);
+}
+[data-style="elegant"] .brand-sub-plus { font-style: normal; font-weight: 400; }
+[data-style="elegant"] .home-name,
+[data-style="elegant"] .tagline {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", Georgia, serif;
+}
+[data-style="elegant"] .card,
+[data-style="elegant"] .notice-help {
+  border-radius: 20px; border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--deep) 10%, transparent);
+}
+[data-style="elegant"] .study-panel { border-radius: 20px; }
+[data-style="elegant"] .btn-primary,
+[data-style="elegant"] .btn-secondary,
+[data-style="elegant"] .btn-text,
+[data-style="elegant"] .btn-small { border-radius: 16px; }
+[data-style="elegant"] .btn-primary {
+  background: linear-gradient(135deg, var(--main), var(--deep));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--deep) 28%, transparent);
+}
+[data-style="elegant"] .lib-panel {
+  position: relative; overflow: hidden; border-radius: 28px;
+  background:
+    radial-gradient(90% 55% at 0% 100%, color-mix(in srgb, #fff 22%, transparent) 0%, transparent 70%),
+    linear-gradient(160deg, var(--main) 0%, color-mix(in srgb, var(--main) 55%, var(--deep)) 100%);
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--deep) 26%, transparent);
+}
+[data-style="elegant"] .lib-panel::before {
+  /* パネルの中の、ごく淡い曲線 */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+  background:
+    radial-gradient(140% 60% at 120% 105%, transparent 58%, rgba(255,255,255,0.55) 58.6%, transparent 59.4%),
+    radial-gradient(150% 70% at 125% 110%, transparent 60%, rgba(255,255,255,0.4) 60.5%, transparent 61.2%);
+}
+[data-style="elegant"] .lib-panel > * { position: relative; }
+[data-style="elegant"] .lib-cat {
+  border-radius: 20px; border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--deep) 14%, transparent);
+}
+[data-style="elegant"] .lib-cat.is-cards { background: var(--gold-bg); border-color: var(--gold-line); }
+[data-style="elegant"] .lib-search { border-radius: 18px; background: rgba(255, 255, 255, 0.82); }
+[data-style="elegant"] .lib-add { border-radius: 18px; }
+
+/* =====================================================================
+   設定：My Style, My Choice.（2つの小さなプレビュー。今の色で表示）
+   ===================================================================== */
+.style-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.style-list > li { display: flex; }
+.style-option {
+  width: 100%; display: grid; align-content: start; gap: 6px; padding: 10px; text-align: left;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; color: var(--text);
+}
+.style-option.is-on { border-color: var(--main); box-shadow: 0 0 0 1.5px var(--main) inset; }
+.style-name { font-size: 15px; font-weight: 700; color: var(--deep); line-height: 1.3; }
+.style-check { color: var(--main); }
+.style-kana { display: block; font-size: 11px; font-weight: 400; color: var(--text-sub); }
+.style-note { font-size: 12px; line-height: 1.55; color: var(--text-sub); }
+.style-mini { display: grid; gap: 4px; padding: 10px; overflow: hidden; }
+.sm-logo { position: relative; display: inline-grid; justify-self: start; font-size: 17px; line-height: 1.15; color: var(--deep); }
+.sm-logo .dot { color: var(--main); }
+.sm-swash { display: none; width: 100%; height: 5px; margin-top: -1px; fill: none; stroke: var(--main); stroke-width: 1.4; stroke-linecap: round; }
+.sm-sub { font-size: 9px; letter-spacing: 0.08em; color: var(--text-sub); white-space: nowrap; }
+.sm-lib { display: grid; gap: 5px; padding: 7px; margin-top: 2px; color: #fff; }
+.sm-lib-head { font-size: 10px; font-weight: 700; }
+.sm-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.sm-cats i { display: block; height: 20px; background: #fff; }
+.sm-cats i.is-gold { background: var(--gold-bg); }
+/* Simple のプレビュー */
+.style-mini.is-simple { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+.style-mini.is-simple .sm-logo { font-family: "Helvetica Neue", Arial, -apple-system, sans-serif; font-weight: 700; }
+.style-mini.is-simple .sm-lib { background: var(--main); border-radius: 6px; }
+.style-mini.is-simple .sm-cats i { border-radius: 3px; }
+/* Elegant のプレビュー */
+.style-mini.is-elegant {
+  border-radius: 14px; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: radial-gradient(120% 70% at 100% 0%, var(--mint) 0%, transparent 65%), var(--bg);
+}
+.style-mini.is-elegant .sm-logo { font-family: "Didot", "Bodoni 72", Georgia, "Times New Roman", serif; font-weight: 500; }
+.style-mini.is-elegant .sm-swash { display: block; }
+.style-mini.is-elegant .sm-sub { font-family: Georgia, "Times New Roman", serif; font-style: italic; color: var(--deep); }
+.style-mini.is-elegant .sm-lib {
+  border-radius: 12px;
+  background: linear-gradient(150deg, var(--main) 0%, color-mix(in srgb, var(--main) 55%, var(--deep)) 100%);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--deep) 22%, transparent);
+}
+.style-mini.is-elegant .sm-cats i { border-radius: 8px; background: rgba(255,255,255,0.9); }
+.style-mini.is-elegant .sm-cats i.is-gold { background: var(--gold-bg); }

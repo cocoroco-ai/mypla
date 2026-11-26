@@ -235,9 +235,21 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Elegant のときだけ見える、背景の抽象的な曲線（押せない・読み上げない） */}
+      <svg className="deco-curves" viewBox="0 0 400 900" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+        <path d="M-40 120C80 40 210 60 300 130S470 230 460 120" />
+        <path d="M-60 170C70 90 220 110 320 175S480 270 470 170" />
+        <path d="M-30 760C90 690 230 700 330 770S470 860 450 780" />
+      </svg>
       <header className="topbar">
         <button className="brand" onClick={home} aria-label="ホームへ">
-          mypla<span className="dot">.</span>
+          <span className="brand-word">
+            mypla<span className="dot">.</span>
+          </span>
+          {/* Elegant のときだけ見える、ロゴの下の細い曲線 */}
+          <svg className="brand-swash" viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M2 7.5C26 1.5 52 1.8 70 5.2S104 9.2 118 2.5" />
+          </svg>
         </button>
         {session && (
           <button className="btn-logout" onClick={logout}>
@@ -378,20 +390,15 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
   return (
     <section>
       <div className="home-hero">
-        {/* 名前を付けたときだけ大きく出す（未設定なら、今までどおり上の「mypla.」と下のひとことだけ） */}
+        {/* ロゴの下のブランド表記：My Platform（わたしの居場所）＋ 音の響きで My Plus（わたしにプラス） */}
+        <p className="brand-sub" aria-label="My Platform プラス My Plus">
+          <span>My Platform</span>
+          <span className="brand-sub-plus" aria-hidden="true">＋</span>
+          <span>My Plus</span>
+        </p>
+        {/* 利用者が付けた名前（未設定なら出さない） */}
         {myName && <h1 className="home-name is-custom">{myName}</h1>}
         <p className="tagline">集める知識、広がる私。</p>
-        {/* 名前の由来：my platform（わたしの居場所）と、音で my plus（わたしにプラス） */}
-        <dl className="brand-meaning" aria-label="mypla. の名前の由来">
-          <div className="bm-row">
-            <dt className="bm-word"><b>my pla</b>tform</dt>
-            <dd className="bm-ja">わたしの居場所</dd>
-          </div>
-          <div className="bm-row">
-            <dt className="bm-word"><b>my pl</b>us</dt>
-            <dd className="bm-ja">わたしにプラス</dd>
-          </div>
-        </dl>
       </div>
 
       {/* ライブラリー（ホームを開いたらすぐ見えるよう一番上に）：すべての保存情報。カテゴリーはその中で、テーマ別に見るための入り口 */}

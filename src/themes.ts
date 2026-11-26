@@ -80,3 +80,43 @@ export function savePlaceName(name: string): void {
     // 保存できない端末では、開いている間だけ
   }
 }
+
+// ---------------------------------------------------------------------
+// My Style, My Choice.：デザインスタイル（色とは別に選ぶ。この端末に保存。初めは Simple）
+// 見た目の違いは styles.css の [data-style="…"] にまとめてある
+// ---------------------------------------------------------------------
+export type StyleId = 'simple' | 'elegant';
+
+export const STYLES: { id: StyleId; name: string; kana: string; note: string }[] = [
+  { id: 'simple', name: 'Simple', kana: 'シンプル', note: 'すっきり、見やすく、どんなシーンにもなじむ。' },
+  { id: 'elegant', name: 'Elegant', kana: 'エレガント', note: 'やわらかく、上質で、心地よい空間。' },
+];
+
+export const DEFAULT_STYLE: StyleId = 'simple';
+const STYLE_KEY = 'mypla-style';
+
+function isStyleId(v: unknown): v is StyleId {
+  return v === 'simple' || v === 'elegant';
+}
+
+export function currentStyle(): StyleId {
+  const now = document.documentElement.dataset.style;
+  if (isStyleId(now)) return now;
+  try {
+    const saved = localStorage.getItem(STYLE_KEY);
+    if (isStyleId(saved)) return saved;
+  } catch {
+    // 読めない端末では初めのスタイル
+  }
+  return DEFAULT_STYLE;
+}
+
+export function applyStyle(id: StyleId, save = true): void {
+  document.documentElement.dataset.style = id;
+  if (!save) return;
+  try {
+    localStorage.setItem(STYLE_KEY, id);
+  } catch {
+    // 保存できなくても、開いている間はこのスタイル
+  }
+}
