@@ -759,6 +759,24 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 
 /* AIに渡す */
 .ai-row { margin-top: 10px; display: grid; }
+/* 線のアイコン＋文字のボタン */
+.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.with-icon .line-icon { flex: none; }
+.ai-title.with-icon { justify-content: flex-start; }
+/* 記事：この文章を使う（コピー・AIに渡す）を畳む */
+.use-panel { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+.use-toggle {
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0;
+  border: 0; background: none; font: inherit; color: var(--deep); text-align: left; cursor: pointer;
+}
+.use-toggle-label { font-weight: 700; font-size: 15px; }
+.use-toggle-hint { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; }
+.use-chevron { display: inline-flex; transition: transform .15s; }
+.use-chevron.is-up { transform: rotate(180deg); }
+.use-body { display: grid; gap: 12px; padding: 4px 0 2px; }
+.use-item { display: grid; gap: 4px; }
+.use-item > .btn-secondary { width: 100%; }
+.use-item .hint { margin: 0; }
 .ai-handoff { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
 .ai-title { margin: 0; font-size: 15px; color: var(--deep); }
 .ai-handoff .hint { margin: 0; }

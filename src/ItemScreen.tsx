@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ImageViewer from './ImageViewer';
 import { StudyStatusPicker, StudyThemePicker } from './StudyNote';
 import { IdeaStatusPicker } from './IdeaSeed';
-import { ShelfIcon, ShelfLabel } from './icons';
+import { LineIcon, ShelfIcon, ShelfLabel } from './icons';
 import AiHandoff from './AiHandoff';
 import CropEditor from './CropEditor';
 import { TRASH_DAYS, addImagesToItem, appendReadText, deleteImage, formatDate, getItem, listShelves, listAiCards, listStudyThemes, type AiCard, type IdeaStatus, type StudyStatus, type StudyTheme, type Shelf, imageUrls, replaceImage, setReadText, splitImage, trashItem, updateItem, type ItemDetail } from './library';
@@ -38,6 +38,7 @@ export default function ItemScreen({ id, onBack, backLabel = 'ライブラリー
 
   // ひとことメモ
   const [memo, setMemo] = useState('');
+  const [useOpen, setUseOpen] = useState(false); // 「この文章を使う」を開いているか
   const [memoState, setMemoState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // 書き換え
@@ -543,13 +544,31 @@ ${TRASH_DAYS}日間はゴミ箱から元に戻せます。`)) return;
             <div className="card">
               <div className="item-text">{item.body}</div>
               {item.source && <p className="item-source">— {item.source}</p>}
-              <div className="button-row">
-                <button className="btn-secondary" onClick={copy}>
-                  {copied ? 'コピーしました' : '文章をコピー'}
+              {/* この文章を使う：コピー・AIに渡す（ふだんは畳んでおく） */}
+              <div className={`use-panel ${useOpen ? 'is-open' : ''}`}>
+                <button type="button" className="use-toggle" aria-expanded={useOpen} onClick={() => setUseOpen((v) => !v)}>
+                  <LineIcon name="share" size={20} />
+                  <span className="use-toggle-label">この文章を使う</span>
+                  <span className="use-toggle-hint">
+                    {useOpen ? '畳む' : '開く'}
+                    <span className={`use-chevron ${useOpen ? 'is-up' : ''}`}><LineIcon name="chevronDown" size={16} /></span>
+                  </span>
                 </button>
-              </div>
-              <div className="ai-row">
-                <AiHandoff title={item.title} body={item.body} url={item.url} source={item.source} />
+                {useOpen && (
+                  <div className="use-body">
+                    <div className="use-item">
+                      <button className="btn-secondary with-icon" onClick={copy}>
+                        <LineIcon name="copy" size={20} />
+                        <span>{copied ? 'コピーしました' : '文章をコピー'}</span>
+                      </button>
+                      <p className="hint">LINE やメモ帳などに貼り付けて使えます。</p>
+                    </div>
+                    <div className="use-item">
+                      <AiHandoff title={item.title} body={item.body} url={item.url} source={item.source} />
+                      <p className="hint">AI に「要約して」「やさしく説明して」などを頼めます。</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

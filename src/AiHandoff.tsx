@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LineIcon } from './icons';
 
 /**
  * 「AIに渡す」：頼み方と記事の文章をまとめてコピーし、AI のページを開く。
@@ -72,15 +73,19 @@ export default function AiHandoff({ title, body, url, source }: Props) {
 
   if (!open) {
     return (
-      <button className="btn-secondary" onClick={() => setOpen(true)}>
-        🤖 AIに渡す
+      <button className="btn-secondary with-icon" onClick={() => setOpen(true)}>
+        <LineIcon name="sparkle" size={20} />
+        <span>AIに渡す</span>
       </button>
     );
   }
 
   return (
     <div className="ai-handoff">
-      <h3 className="ai-title">🤖 AIに渡す</h3>
+      <h3 className="ai-title with-icon">
+        <LineIcon name="sparkle" size={20} />
+        <span>AIに渡す</span>
+      </h3>
       <p className="hint">
         頼み方とこの記事の文章をまとめてコピーし、AI を開きます。mypla. からは何も送りません（貼り付けて送るのは、あなたです）。
       </p>
@@ -92,7 +97,7 @@ export default function AiHandoff({ title, body, url, source }: Props) {
         ))}
       </div>
       {askId === 'visual' && (
-        <p className="hint ai-ask-note">🖼 画像を作れるのは ChatGPT・Gemini です。Claude は図や表の形でまとめてくれます。</p>
+        <p className="hint ai-ask-note">画像を作れるのは ChatGPT・Gemini です。Claude は図や表の形でまとめてくれます。</p>
       )}
       <textarea
         className="ai-ask-text"
