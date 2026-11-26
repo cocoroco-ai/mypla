@@ -1167,3 +1167,15 @@ button.item-image-link { padding: 0; border: 0; background: none; width: 100%; c
 .category-field { margin-bottom: 12px; }
 .category-field .hint { margin: 0; }
 .category-select { appearance: auto; background: var(--surface); }
+
+/* ホーム一番下：お知らせが出るとき（説明） */
+.notice-help { margin: 8px 0 16px; padding: 4px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.notice-help summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--deep); }
+.notice-help dl { margin: 4px 0 8px; }
+.notice-help dt { margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--deep); }
+.notice-help dd { margin: 2px 0 0; font-size: 13px; line-height: 1.7; color: var(--text); }
+.notice-help .hint { margin: 8px 0 10px; }
+.notice-help summary::-webkit-details-marker { display: none; }
+.notice-help summary { list-style: none; justify-content: space-between; }
+.notice-help summary::after { content: "開く ▼"; font-size: 13px; }
+.notice-help[open] summary::after { content: "畳む ▲"; }

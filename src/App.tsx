@@ -35,6 +35,9 @@ import {
   pickReread,
   purgeExpiredTrash,
   TRASH_WARN_DAYS,
+  TRASH_DAYS,
+  REREAD_MIN_DAYS,
+  BACKUP_REMIND_DAYS,
   type RereadPick,
 } from './library';
 
@@ -591,6 +594,34 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
       <button className="home-link" onClick={onBackup}>
         データの書き出し・読み込み（バックアップ）
       </button>
+
+      {/* お知らせの説明（いつ・何が出るか）。ふだんは畳んでおく */}
+      <details className="notice-help">
+        <summary>お知らせが出るとき（説明）</summary>
+        <dl>
+          <dt>今日の復習</dt>
+          <dd>
+            学びノートに、覚えた？が「まだ」「復習中」の記事があると出ます。1日に1件、古く保存した順に毎日替わります。
+            「身についた」にした記事は出なくなります。
+          </dd>
+          <dt>今日のことば</dt>
+          <dd>
+            ことばの宝箱（言葉のカードの見た目のカテゴリー）に記事があると出ます。1日に1件、毎日替わります。
+            「誰の言葉」を入れてあれば、名前も出ます。
+          </dd>
+          <dt>読み返し</dt>
+          <dd>保存して{REREAD_MIN_DAYS}日以上たった記事から、1日に1件出ます。</dd>
+          <dt>バックアップ</dt>
+          <dd>
+            記事が5件以上あって、まだ一度も書き出していないか、最後の書き出しから{BACKUP_REMIND_DAYS}日たつと出ます。書き出すと消えます。
+          </dd>
+          <dt>ゴミ箱</dt>
+          <dd>
+            ゴミ箱の記事は{TRASH_DAYS}日で完全に消えます。残り{TRASH_WARN_DAYS}日以内のものがあると知らせます。
+          </dd>
+        </dl>
+        <p className="hint">どれも同じ日なら、何回ホームを開いても同じ記事が出ます。押すと、その記事や画面が開きます。</p>
+      </details>
 
       <div className="bottom-action home-actions">
         <button className="btn-primary btn-large" onClick={onImport}>
