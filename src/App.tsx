@@ -425,7 +425,7 @@ function Home({ purged, isGuest, userId, guestsCleaned, dataVersion, onImport, o
             )}
           </span>
         </button>
-        <p className="lib-sub">保存した知識、広がる私。</p>
+        <p className="lib-sub">あなたが集めた、すべての知識。</p>
         <button className="lib-search" onClick={onLibrary}>
           <span className="lib-search-icon"><LineIcon name="search" size={18} /></span>
           <span className="lib-search-text">すべての情報を検索・閲覧</span>
